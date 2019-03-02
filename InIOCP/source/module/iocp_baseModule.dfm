@@ -1,5 +1,5 @@
 object InIOCPDataModule: TInIOCPDataModule
   OldCreateOrder = False
-  Height = 327
+  Height = 263
   Width = 562
 end

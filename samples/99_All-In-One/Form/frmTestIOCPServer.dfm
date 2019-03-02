@@ -16,7 +16,7 @@ object FormTestIOCPServer: TFormTestIOCPServer
   OnClose = FormClose
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  PixelsPerInch = 96
+  PixelsPerInch = 120
   TextHeight = 12
   object bvl2: TBevel
     Left = 719
@@ -354,7 +354,7 @@ object FormTestIOCPServer: TFormTestIOCPServer
     Top = 382
     Width = 582
     Height = 219
-    ActivePage = TabSheet1
+    ActivePage = TabSheet2
     MultiLine = True
     TabOrder = 31
     object TabSheet1: TTabSheet
@@ -363,7 +363,7 @@ object FormTestIOCPServer: TFormTestIOCPServer
         Left = 0
         Top = 0
         Width = 574
-        Height = 192
+        Height = 191
         Align = alClient
         ImeName = #35895#27468#25340#38899#36755#20837#27861' 2'
         Lines.Strings = (
@@ -379,7 +379,7 @@ object FormTestIOCPServer: TFormTestIOCPServer
         Left = 0
         Top = 0
         Width = 574
-        Height = 192
+        Height = 191
         Align = alClient
         DataSource = DataSource1
         ImeName = #35895#27468#25340#38899#36755#20837#27861' 2'
@@ -793,7 +793,9 @@ object FormTestIOCPServer: TFormTestIOCPServer
   end
   object InConnection1: TInConnection
     OnReturnResult = InConnection1ReturnResult
+    AutoConnect = True
     LocalPath = 'temp\'
+    ReuseSessionId = True
     ServerAddr = 'localhost'
     ServerPort = 0
     AfterConnect = InConnection1AfterConnect
@@ -897,34 +899,21 @@ object FormTestIOCPServer: TFormTestIOCPServer
   object InDBConnection1: TInDBConnection
     OnReturnResult = InDBConnection1ReturnResult
     Connection = InConnection1
+    ConnectionIndex = 0
     Left = 320
     Top = 296
   end
   object InDBQueryClient1: TInDBQueryClient
     OnReturnResult = InDBQueryClient1ReturnResult
-    Connection = InConnection1
+    DBConnection = InDBConnection1
     ClientDataSet = ClientDataSet1
-    TableName = 'TBL_XZQH'
-    Left = 368
+    Left = 408
     Top = 336
-  end
-  object InDBSQLClient1: TInDBSQLClient
-    OnReturnResult = InDBSQLClient1ReturnResult
-    Connection = InConnection1
-    Left = 368
-    Top = 296
-  end
-  object ClientDataSet1: TClientDataSet
-    Aggregates = <>
-    IndexFieldNames = 'CODE'
-    Params = <>
-    Left = 464
-    Top = 304
   end
   object DataSource1: TDataSource
     DataSet = ClientDataSet1
-    Left = 464
-    Top = 352
+    Left = 416
+    Top = 432
   end
   object InHttpDataProvider1: TInHttpDataProvider
     KeepAlive = True
@@ -971,8 +960,15 @@ object FormTestIOCPServer: TFormTestIOCPServer
     Left = 520
     Top = 296
   end
-  object InIOCPBroker1: TInIOCPBroker
-    Left = 560
-    Top = 160
+  object InDBSQLClient1: TInDBSQLClient
+    DBConnection = InDBConnection1
+    Left = 368
+    Top = 336
+  end
+  object ClientDataSet1: TClientDataSet
+    Aggregates = <>
+    Params = <>
+    Left = 368
+    Top = 432
   end
 end

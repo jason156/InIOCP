@@ -1,7 +1,7 @@
 // ===================================================== //
 //
 //               InIOCP（小旋风服务套件）
-//            （开源，正式版：2.5.30.1221）
+//            （开源，正式版：2.5.31.1222）
 //
 //        适用于：Delphi 7、Delphi 2007、
 //                Delphi XE、Delphi XE5-XE10
@@ -14,9 +14,21 @@
 //
 // ===================================================== //
 
+2019-03-02，正式版：2.5.32.1223
+    1. 增加属性 TInDBConnection.ConnectionIndex（数据库连接编号）；
+    2. TInDBSQLClient、TInDBQueryClient 增加属性 DBConnection 取代原来的 Connection，
+       执行请求时会自动发送当前数据库连接编号；
+    3. 服务端自动设置 TInDBSQLClient、TInDBQueryClient 的当前数据库连接编号。
+
+    以后可以直接设 TInDBConnection.ConnectionIndex 而不用执行 TInDBConnection.Connect，
+计划下版实现主从表数据的传输和提交功能。
+
+2019-02-28，正式版：2.5.31.1222
+   修正客户端断开时定时器被释放但仍可能被设 Enabled 的问题。
+
 2018-12-30，正式版：2.5.30.1221
     1、纠正 HTTP CONNECT 请求的问题；
-    2、TInIOCPBroker 增加事件 OnAccept，用于判断 HTTP 代理时是否允许建立代理连接；
+    2、TInIOCPBroker 增加事件 OnAccept，用于判断是否允许建立代理连接；
     3、取消 TInHttpDataProvider 组件的 OnConnect 事件（用代理组件实现）。
 
 2018-09-10，正式版：2.5.29.1220

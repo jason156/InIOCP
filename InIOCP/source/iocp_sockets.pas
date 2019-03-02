@@ -1266,7 +1266,7 @@ function TIOCPSocket.CheckMsgHead(InBuf: PAnsiChar): Boolean;
       Result := arOK       // 通过
     else
     if (FParams.SessionId = 0) then
-      Result := arErrUser  // 客户端不传递 SessionId, 当非法用户(
+      Result := arErrUser  // 客户端缺少 SessionId, 当非法用户
     else
     if (FParams.SessionId = INI_SESSION_ID) or
        (FParams.SessionId = FSessionId) then
@@ -1353,13 +1353,24 @@ function TIOCPSocket.CreateSession: Cardinal;
 var
   NowTime: TDateTime;
   Certify: TCertifyNumber;
+  LHour, LMinute, LSecond, LMilliSecond: Word;
 begin
   // 生成一个登录凭证，有效期为 SESSION_TIMEOUT 分钟
   //   结构：(相对日序号 + 有效分钟) xor 年
   NowTime := Now();
-  Certify.DayCount := Trunc(NowTime - 42500);  // 相对日序号
-  Certify.Timeout := HourOf(NowTime) * 60 + MinuteOf(NowTime) + SESSION_TIMEOUT;
-  Result := Certify.Session xor (Cardinal($A0250000) + YearOf(NowTime));
+
+  DecodeTime(NowTime, LHour, LMinute, LSecond, LMilliSecond);
+
+  Certify.DayCount := Trunc(NowTime - 43000);  // 相对日序号
+  Certify.Timeout := LHour * 60 + LMinute + SESSION_TIMEOUT;
+
+  if (Certify.Timeout >= 1440) then  // 超过一天的分钟数
+  begin
+    Inc(Certify.DayCount);  // 后一天
+    Dec(Certify.Timeout, 1440);
+  end;
+
+  Result := Certify.Session xor Cardinal($AB12);
 end;
 
 destructor TIOCPSocket.Destroy;
@@ -1682,14 +1693,20 @@ function TIOCPSocket.SessionValid(ASession: Cardinal): Boolean;
 var
   NowTime: TDateTime;
   Certify: TCertifyNumber;
+  LHour, LMinute, LSecond, LMilliSecond: Word;  
 begin
   // 检查凭证是否正确且没超时
   //   结构：(相对日序号 + 有效分钟) xor 年
   NowTime := Now();
-  Certify.Session := ASession xor (Cardinal($A0250000) + YearOf(NowTime));
 
-  Result := (Certify.DayCount = Trunc(NowTime - 42500)) and
-            (Certify.Timeout > HourOf(NowTime) * 60 + MinuteOf(NowTime));
+  DecodeTime(NowTime, LHour, LMinute, LSecond, LMilliSecond);
+
+  LMinute := LHour * 60 + LMinute;  // 临时存放
+  LSecond :=  Trunc(NowTime - 43000);  // 临时存放
+  Certify.Session := ASession xor Cardinal($AB12);
+
+  Result := (Certify.DayCount = LSecond) and (Certify.Timeout > LMinute) or
+            (Certify.DayCount = LSecond + 1) and (Certify.Timeout > (1440 - LMinute));
 
   if Result then
     FSessionId := Certify.Session;

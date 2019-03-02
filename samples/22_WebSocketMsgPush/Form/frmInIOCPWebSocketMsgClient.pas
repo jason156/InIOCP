@@ -42,8 +42,8 @@ end;
 
 procedure TFormInIOCPWsJSONMsgClient.FormCreate(Sender: TObject);
 begin
-  InWSConnection1.ServerAddr := 'localhost'; //'192.168.1.196';
-  InWSConnection1.ServerPort := 80; // '12302';
+  InWSConnection1.ServerAddr := '192.168.1.196'; // 'localhost'; //
+  InWSConnection1.ServerPort := 800; // '12302';
   InWSConnection1.Active := True;
 end;
 

@@ -6,7 +6,9 @@ uses
   // 使用时请加单元引用 MidasLib！
   Windows, Messages, SysUtils, Variants, Classes, Graphics,
   Controls, Forms, Dialogs, DB, DBClient, Provider,
-  {$IFDEF VER320} Data.Win.ADODB {$ELSE} ADODB {$ENDIF},  // 高版本是 Data.Win.ADODB
+//  {$IF CompilerVersion >= 32} Data.Win.ADODB {$ELSE}
+  ADODB,
+//  {$ENDIF},  // 高版本是 Data.Win.ADODB
   iocp_baseModule, iocp_base, iocp_objPools, iocp_sockets,
   iocp_sqlMgr, http_base, http_objects, iocp_WsJSON, MidasLib;
 
@@ -323,8 +325,8 @@ begin
   // A. 把数据集当作变量发送给客户端
   //    自动压缩，客户端自动解压
   Result.V['_data'] := DataSetProvider1.Data;
-  Result.S['_table'] := 'tbl_xzqh';  // FQuery 要关闭，返回待更新数据表给客户端
-  FQuery.Active := False;
+  Result.S['_table'] := 'tbl_xzqh';  
+  FQuery.Active := False;  // FQuery 要关闭，返回待更新数据表给客户端
 
   // 可以继续加入明细表
 //  Result.V['_detail'] := DataSetProvider2.Data;
@@ -336,7 +338,7 @@ begin
   // Result.Attachment := TFileStream.Create('e:\aaa.json', fmOpenRead);
   // Result.S['attach'] := 'query.dat';  //附件名称
 
-  // C. 用以下方法返回不带描述信息的 JSON 给客户端：
+  // C. 用以下方法返回不带字段描述信息的 JSON 给客户端：
   // Result.DataSet := FQuery;  // 发送完毕会自动关闭 FQuery
   
 end;

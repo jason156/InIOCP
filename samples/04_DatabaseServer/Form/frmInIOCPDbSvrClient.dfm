@@ -185,6 +185,15 @@ object FormInIOCPDbSvrClient: TFormInIOCPDbSvrClient
     TabOrder = 16
     Text = '12302'
   end
+  object Button1: TButton
+    Left = 389
+    Top = 225
+    Width = 83
+    Height = 25
+    Caption = 'Test'
+    TabOrder = 17
+    OnClick = Button1Click
+  end
   object InConnection1: TInConnection
     LocalPath = 'temp\'
     ServerAddr = '127.0.0.1'

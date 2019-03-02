@@ -56,7 +56,8 @@ object FormInIOCPWsJSONMsgClient: TFormInIOCPWsJSONMsgClient
     Top = 72
   end
   object InWSConnection1: TInWSConnection
-    ServerPort = 80
+    ServerAddr = '192.168.1.196'
+    ServerPort = 800
     AfterConnect = InWSConnection1AfterConnect
     OnReceiveData = InWSConnection1ReceiveData
     OnReceiveMsg = InWSConnection1ReceiveMsg

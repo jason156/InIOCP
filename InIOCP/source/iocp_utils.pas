@@ -9,7 +9,7 @@ interface
 
 uses
   Windows, Classes, SysUtils, Registry, ActiveX, PsAPI, Variants, DB,
-  {$IFDEF VER320} Data.Win.ADODB {$ELSE} ADODB {$ENDIF}, // 高版本是 Data.Win.ADODB
+  { $IF CompilerVersion >= 320 Data.Win.ADODB $ELSE} ADODB, // {$ENDIF}, // 高版本是 Data.Win.ADODB
   iocp_Winsock2, iocp_zlib, iocp_base,
   iocp_lists, http_base, http_utils;
 
@@ -384,7 +384,7 @@ begin
     end else
     begin
       Ent := iocp_Winsock2.GetHostByName(PAnsiChar(Host));
-      if (Ent <> nil) then
+      if (Ent <> nil) then  // 取第一个
         Result := IntToStr(Byte(Ent^.h_addr^[0])) + '.' +
                   IntToStr(Byte(Ent^.h_addr^[1])) + '.' +
                   IntToStr(Byte(Ent^.h_addr^[2])) + '.' +

@@ -337,6 +337,7 @@ type
     property AsRecord;
     property AsString;
     property AsStream;
+//    property AsVariant;
   end;
 
   // ================== 收到的消息包 类 ======================

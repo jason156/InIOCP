@@ -14,7 +14,7 @@ object FormInIOCPWsJSON: TFormInIOCPWsJSON
   Position = poDesktopCenter
   Scaled = False
   OnCreate = FormCreate
-  PixelsPerInch = 96
+  PixelsPerInch = 120
   TextHeight = 12
   object Button1: TButton
     Left = 480

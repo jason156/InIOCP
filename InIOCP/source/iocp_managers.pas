@@ -1189,6 +1189,14 @@ begin
 end;
 
 procedure TInDatabaseManager.Execute(Socket: TIOCPSocket);
+  procedure InnerSetConnection;
+  begin
+    // 准备当前操作的数模实例
+    if Assigned(Socket.Data) then
+      if (Socket.Data^.DBConnection <> Socket.Params.Target) then
+        Socket.Data^.DBConnection := Socket.Params.Target;
+    TBusiWorker(Socket.Worker).SetConnection(Socket.Params.Target);
+  end;
 begin
   // 数据库操作与数模关系密切，不进入界面性业务模块，减少复杂性。
   // 调用前已经设置用当前数据连接，见：TBusiWorker.Execute
@@ -1211,17 +1219,25 @@ begin
         atDBConnect:        // 数据库连接
           DBConnect(Socket);
 
-        atDBExecQuery:      // SELECT-SQL 查询, 有数据集返回
+        atDBExecQuery: begin // SELECT-SQL 查询, 有数据集返回
+          InnerSetConnection;
           TBusiWorker(Socket.Worker).DataModule.ExecQuery(Socket.Params, Socket.Result);
+        end;
 
-        atDBExecSQL:        // 执行 SQL
+        atDBExecSQL: begin  // 执行 SQL
+          InnerSetConnection;
           TBusiWorker(Socket.Worker).DataModule.ExecSQL(Socket.Params, Socket.Result);
+        end;
 
-        atDBExecStoredProc: // 执行存储过程
+        atDBExecStoredProc: begin // 执行存储过程
+          InnerSetConnection;
           TBusiWorker(Socket.Worker).DataModule.ExecStoredProcedure(Socket.Params, Socket.Result);
+        end;
 
-        atDBApplyUpdates:   // 修改的数据
+        atDBApplyUpdates: begin   // 修改的数据
+          InnerSetConnection;
           TBusiWorker(Socket.Worker).DataModule.ApplyUpdates(Socket.Params, Socket.Result);
+        end;
       end;
   end;
 end;

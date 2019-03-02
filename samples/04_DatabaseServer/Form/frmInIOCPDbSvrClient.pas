@@ -34,6 +34,7 @@ type
     btnStoredProc2: TButton;
     edtIP: TEdit;
     edtPort: TEdit;
+    Button1: TButton;
     procedure btnConnectClick(Sender: TObject);
     procedure btnDisconnectClick(Sender: TObject);
     procedure btnLoginClick(Sender: TObject);
@@ -57,6 +58,7 @@ type
     procedure btnStoredProcClick(Sender: TObject);
     procedure btnStoredProc2Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
   private
     { Private declarations }
   public
@@ -89,6 +91,21 @@ begin
     ExecStoredProc('ExecuteStoredProc');
   end;
 
+end;
+
+procedure TFormInIOCPDbSvrClient.Button1Click(Sender: TObject);
+var
+  inQry: TInDBQueryClient;
+begin
+  inQry := TInDBQueryClient.Create(Self);
+  try
+    inQry.Connection := InConnection1;
+    InDBConnection1.Connect(1);
+    inQry.Params.SQL := 'SELECT * FROM tbl_xzqh';
+    inQry.ExecQuery(ClientDataSet1);
+  finally
+    inQry.Free;
+  end;
 end;
 
 procedure TFormInIOCPDbSvrClient.btnStoredProc2Click(Sender: TObject);

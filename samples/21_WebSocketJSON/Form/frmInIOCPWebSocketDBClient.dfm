@@ -43,7 +43,7 @@ object FormInIOCPWsDBClient: TFormInIOCPWsDBClient
   end
   object btnDBQuery: TButton
     Left = 486
-    Top = 169
+    Top = 161
     Width = 83
     Height = 25
     Caption = #26597#35810
@@ -78,7 +78,7 @@ object FormInIOCPWsDBClient: TFormInIOCPWsDBClient
   end
   object btnDBUpdate: TButton
     Left = 486
-    Top = 200
+    Top = 192
     Width = 83
     Height = 25
     Caption = #26356#26032

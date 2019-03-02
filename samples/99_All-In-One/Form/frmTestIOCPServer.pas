@@ -63,13 +63,11 @@ type
     ComboBox1: TComboBox;
     btnDBConnection: TButton;
     InDBQueryClient1: TInDBQueryClient;
-    InDBSQLClient1: TInDBSQLClient;
     PageControl1: TPageControl;
     TabSheet1: TTabSheet;
     TabSheet2: TTabSheet;
     mmoClient: TMemo;
     DBGrid1: TDBGrid;
-    ClientDataSet1: TClientDataSet;
     DataSource1: TDataSource;
     ts1: TTabSheet;
     lbl1: TLabel;
@@ -94,7 +92,8 @@ type
     btnWSConnect: TButton;
     btnWSSendFiles: TButton;
     btnWSListFiles: TButton;
-    InIOCPBroker1: TInIOCPBroker;
+    InDBSQLClient1: TInDBSQLClient;
+    ClientDataSet1: TClientDataSet;
     procedure btnStartClick(Sender: TObject);
     procedure btnStopClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
@@ -1035,6 +1034,7 @@ procedure TFormTestIOCPServer.InDBQueryClient1ReturnResult(Sender: TObject;
   Result: TResultParams);
 begin
   // 查询、更新都用 InDBQueryClient1
+  mmoClient.Lines.Add('ThreadId:' + IntToStr(GetCurrentThreadId));
   case Result.Action of
     atDBExecQuery,
     atDBExecStoredProc:
@@ -2077,10 +2077,35 @@ const
 var
   i: Integer;
   Dest: TSHA1Digest;
-  Tick: Cardinal;      }
+  Tick: Cardinal;      
+var
+  NowTime: TDateTime;
+  Certify: TCertifyNumber;
+  LHour, LMinute, LSecond, LMilliSecond: Word;  }
 begin
+  // 生成一个登录凭证，有效期为 SESSION_TIMEOUT 分钟
+  //   结构：(相对日序号 + 有效分钟) xor 年
+
   mmoServer.Lines.Clear;
   mmoClient.Lines.Clear;
+
+{  NowTime := Now();
+
+  DecodeTime(NowTime, LHour, LMinute, LSecond, LMilliSecond);
+
+  Certify.DayCount := Trunc(NowTime - 43000);  // 相对日序号
+  Certify.Timeout := LHour * 60 + LMinute + SESSION_TIMEOUT;
+
+  if (Certify.Timeout >= 1440) then
+  begin
+    Inc(Certify.DayCount);  // 后一天
+    Certify.Timeout := 1440 - Certify.Timeout;
+  end;
+
+
+  mmoServer.Lines.Add(IntToStr(Certify.Session xor (Cardinal($AB00) + YearOf(NowTime))));
+}
+
 //  mmoClient.Lines.Add(BoolToStr(False));
 
 {  mmoClient.Lines.Add('计算SHA1码');
@@ -2169,6 +2194,7 @@ end;
 procedure TFormTestIOCPServer.btnExecQueryClick(Sender: TObject);
 begin
   // 查询数据库，结果输出到 ClientDataSet1
+  mmoClient.Lines.Add('ThreadId:' + IntToStr(GetCurrentThreadId));
   with InDBQueryClient1 do
   begin
     // 第一个 SQL

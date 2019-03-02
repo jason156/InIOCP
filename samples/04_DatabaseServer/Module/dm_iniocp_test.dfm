@@ -10,7 +10,7 @@ object dmInIOCPTest: TdmInIOCPTest
   OnHttpExecSQL = InIOCPDataModuleHttpExecSQL
   OnWebSocketQuery = InIOCPDataModuleWebSocketQuery
   OnWebSocketUpdates = InIOCPDataModuleWebSocketUpdates
-  Height = 213
+  Height = 229
   Width = 531
   object DataSetProvider1: TDataSetProvider
     Left = 168

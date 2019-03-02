@@ -780,7 +780,13 @@ begin
 
   if (dwError <> 0) or (cbTransferred = 0) then // 断开或异常
   begin
-    Connection.FTimer.Enabled := True;
+    // 服务端关闭时要断开连接：2019-02-28
+    if (cbTransferred = 0) and Assigned(Connection.FTimer) then
+      try
+        Connection.FTimer.Enabled := True;
+      except
+       // 空
+      end;
     Exit;
   end;
 

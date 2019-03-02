@@ -217,7 +217,6 @@ type
 
   TInBaseClient = class(TBaseClientObject)
   private
-    FConnection: TInConnection;   // 客户端连接
     FParams: TClientParams;       // 待发送消息包（不要直接使用）
     FFileList: TStrings;          // 查询文件的列表
     function CheckState(CheckLogIn: Boolean = True): Boolean;
@@ -226,14 +225,14 @@ type
     procedure ListReturnFiles(Result: TResultParams);
     procedure SetConnection(const Value: TInConnection);
   protected
+    FConnection: TInConnection;   // 客户端连接
     FOnListFiles: TListFileEvent; // 列离线消息文件
   protected
+    property Connection: TInConnection read FConnection write SetConnection;
     property Params: TClientParams read GetParams;
   public
     destructor Destroy; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-  published
-    property Connection: TInConnection read FConnection write SetConnection;
   end;
 
   // ============ 响应服务客户端 ============
@@ -241,6 +240,8 @@ type
   TInEchoClient = class(TInBaseClient)
   public
     procedure Post;
+  published
+    property Connection;
   end;
 
   // ============ 认证服务客户端 ============
@@ -280,6 +281,7 @@ type
   public
     property Logined: Boolean read GetLogined;
   published
+    property Connection;
     property Group: String read FGroup write FGroup;
     property UserName: String read FUserName write SetUserName;
     property Password: String read FPassword write SetPassword;
@@ -299,6 +301,7 @@ type
     procedure GetMsgFiles(FileList: TStrings = nil);
     procedure SendMsg(const Msg: String; const ToUserName: String = '');
   published
+    property Connection;
     property OnListFiles: TListFileEvent read FOnListFiles write FOnListFiles;
   end;
 
@@ -319,24 +322,35 @@ type
     procedure Upload(const AFileName: String); overload;
     procedure Share(const AFileName: String; Groups: TStrings);
   published
+    property Connection;
     property OnListFiles: TListFileEvent read FOnListFiles write FOnListFiles;
   end;
 
   // ============ 数据库连接客户端 ============
 
   TInDBConnection = class(TInBaseClient)
+  private
+    FConnectionIndex: Integer;   // 连接编号
   public
     procedure GetConnections;
     procedure Connect(ANo: Cardinal);
+  published
+    property Connection;
+    property ConnectionIndex: Integer read FConnectionIndex write FConnectionIndex;
   end;
 
   // ============ 数据库客户端 基类 ============
 
   TDBBaseClientObject = class(TInBaseClient)
+  private
+    FDBConnection: TInDBConnection;  // 数据库连接
+    procedure SetDBConnection(const Value: TInDBConnection);
   public
     procedure ExecStoredProc(const ProcName: String);
   public
     property Params;
+  published
+    property DBConnection: TInDBConnection read FDBConnection write SetDBConnection;
   end;
 
   // ============ SQL 命令客户端 ============
@@ -373,6 +387,8 @@ type
     procedure Post;
   public
     property Params;
+  published
+    property Connection;    
   end;
 
   // ============ 远程函数客户端 ============
@@ -382,6 +398,8 @@ type
     procedure Call(const GroupName: String; FunctionNo: Integer);
   public
     property Params;
+  published
+    property Connection;    
   end;
 
   // =================== 发送线程 类 ===================
@@ -1653,6 +1671,7 @@ begin
   if CheckState() then
   begin
     Params.FTarget := ANo;
+    FConnectionIndex := ANo;  // 保存
     InternalPost(atDBConnect);
   end;
 end;
@@ -1673,7 +1692,17 @@ begin
   if CheckState() then
   begin
     Params.StoredProcName := ProcName;
+    FParams.FTarget := FDBConnection.FConnectionIndex;  // 对应的数模编号
     InternalPost(atDBExecStoredProc);
+  end;
+end;
+
+procedure TDBBaseClientObject.SetDBConnection(const Value: TInDBConnection);
+begin
+  if (FDBConnection <> Value) then
+  begin
+    FDBConnection := Value;
+    FConnection := FDBConnection.FConnection;
   end;
 end;
 
@@ -1683,7 +1712,10 @@ procedure TInDBSQLClient.ExecSQL;
 begin
   // 执行 SQL
   if CheckState() and Assigned(Params) then
+  begin
+    FParams.FTarget := FDBConnection.FConnectionIndex;  // 对应的数模编号
     InternalPost(atDBExecSQL);
+  end;
 end;
 
 { TInDBQueryClient }
@@ -1721,6 +1753,7 @@ begin
   begin
     if Assigned(ADataSet) then  // 用参数设置关联数据集
       FTempDataSet := ADataSet;
+    FParams.FTarget := FDBConnection.FConnectionIndex;  // 对应的数模编号
     if (FParams.SQLName <> '') then  // 可能设 SQLName
       InternalPost(atDBExecQuery)
     else
@@ -1758,7 +1791,8 @@ begin
             oDataSet := FClientDataSet
           else
             oDataSet := nil;
-          if Assigned(oDataSet) then
+          if Assigned(oDataSet) and  // 2019-03-02 改
+            (Result.VarCount = 0) and Assigned(Result.Main) then
             LoadResultDataSets;
         end;
         atDBApplyUpdates:  // . 更新
@@ -2391,7 +2425,13 @@ begin
 
   if (dwError <> 0) or (cbTransferred = 0) then // 断开或异常
   begin
-    Connection.FTimer.Enabled := True;
+    // 服务端关闭时要断开连接：2019-02-28
+    if (cbTransferred = 0) and Assigned(Connection.FTimer) then
+      try
+        Connection.FTimer.Enabled := True;
+      except
+       // 空
+      end;
     Exit;
   end;
 
