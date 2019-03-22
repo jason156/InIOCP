@@ -1034,7 +1034,7 @@ procedure TFormTestIOCPServer.InDBQueryClient1ReturnResult(Sender: TObject;
   Result: TResultParams);
 begin
   // 查询、更新都用 InDBQueryClient1
-  mmoClient.Lines.Add('ThreadId:' + IntToStr(GetCurrentThreadId));
+//  mmoClient.Lines.Add('ThreadId:' + IntToStr(GetCurrentThreadId));
   case Result.Action of
     atDBExecQuery,
     atDBExecStoredProc:
@@ -2194,7 +2194,11 @@ end;
 procedure TFormTestIOCPServer.btnExecQueryClick(Sender: TObject);
 begin
   // 查询数据库，结果输出到 ClientDataSet1
-  mmoClient.Lines.Add('ThreadId:' + IntToStr(GetCurrentThreadId));
+//  mmoClient.Lines.Add('ThreadId:' + IntToStr(GetCurrentThreadId));
+
+  // 查询结果有多个数据集时，要先加入子 TClientDataSet
+  // InDBQueryClient1.AddClientDataSets(???);
+
   with InDBQueryClient1 do
   begin
     // 第一个 SQL
@@ -2203,7 +2207,7 @@ begin
 
     // 查询结果
     Params.SQL := 'SELECT * FROM tbl_xzqh ORDER BY code';
-    ExecQuery;
+    ExecQuery;  // 新版不带参数
   end;
 
   PageControl1.ActivePageIndex := 1;
@@ -2237,7 +2241,7 @@ begin
 }
 
   // 2. 用 InDBQueryClient1
-  InDBQueryClient1.ApplyUpdates;   // 带参数可以临时更新其他数据表
+  InDBQueryClient1.ApplyUpdates;  // 新版不带参数
 
 end;
 

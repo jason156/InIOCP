@@ -9,7 +9,7 @@ interface
 
 uses
   Windows, Classes, SysUtils,
-  ExtCtrls, Variants, DSIntf, DBClient,
+  ExtCtrls, Variants, DB, DSIntf, DBClient,
   iocp_Winsock2, iocp_base, iocp_utils,
   iocp_lists, iocp_senders, iocp_receivers,
   iocp_baseObjs, iocp_msgPacks, MidasLib;    // 使用时请加单元引用 MidasLib！
@@ -256,10 +256,10 @@ type
 
   TInCertifyClient = class(TInBaseClient)
   private
-    FGroup: String;     // 分组（未用）
-    FUserName: String;  // 名称
-    FPassword: String;  // 密码
-    FLogined: Boolean;  // 登录状态
+    FGroup: String;       // 分组（未用）
+    FUserName: String;    // 名称
+    FPassword: String;    // 密码
+    FLogined: Boolean;    // 登录状态
   private
     FOnCertify: TCertifyEvent;  // 认证（登录/登出）事件
     FOnListClients: TListClientsEvent;  // 显示客户端信息
@@ -360,24 +360,28 @@ type
     procedure ExecSQL;
   end;
 
-  // ============ 数据客户端 基类 ============
-
+  // ============ 数据查询客户端 类 ============
+ 
   TInDBQueryClient = class(TDBBaseClientObject)
   private
     FClientDataSet: TClientDataSet;  // 关联数据集
-    FTempDataSet: TClientDataSet;    // 查询指定的临时数据集
-    FTableName: String;   // 要更新的数据表
-    FReadOnly: Boolean;   // 是否只读
+    FProviders: TList;  // 远程 DataSetProvider 表 
+    FSubClientDataSets: TList;  // 数据子表
+    FTableNames: TStrings; // 要更新的远程表名
+    FReadOnly: Boolean;    // 是否只读
   protected
     procedure HandleFeedback(Result: TResultParams); override;
   public
-    procedure ApplyUpdates(ADataSet: TClientDataSet = Nil; const ATableName: String = '');
-    procedure ExecQuery(ADataSet: TClientDataSet = Nil);
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure AddClientDataSets(AClientDataSet: TClientDataSet);
+    procedure ApplyUpdates;
+    procedure ClearClientDataSets;
+    procedure ExecQuery;
   public
     property ReadOnly: Boolean read FReadOnly;
   published
     property ClientDataSet: TClientDataSet read FClientDataSet write FClientDataSet;
-    property TableName: String read FTableName write FTableName;
   end;
 
   // ============ 自定义消息客户端 ============
@@ -1720,39 +1724,70 @@ end;
 
 { TInDBQueryClient }
 
-procedure TInDBQueryClient.ApplyUpdates(ADataSet: TClientDataSet; const ATableName: String);
-var
-  oDataSet: TClientDataSet;
-  Delta: OleVariant;
+procedure TInDBQueryClient.AddClientDataSets(AClientDataSet: TClientDataSet);
 begin
-  // ATableName：要更新的数据表
+  // 加入子表 TClientDataSet
+  if FSubClientDataSets.IndexOf(AClientDataSet) = -1 then
+    FSubClientDataSets.Add(AClientDataSet);
+end;
+
+procedure TInDBQueryClient.ApplyUpdates;
+var
+  i: Integer;
+  oDataSet: TClientDataSet;
+begin
+  // 更新全部数据表
   if CheckState() and (FReadOnly = False) then
   begin
-    if Assigned(ADataSet) then  // 使用指定数据集
+    for i := 0 to FTableNames.Count - 1 do
     begin
-      oDataSet := ADataSet;
-      oDataSet.SetOptionalParam(szTABLE_NAME, ATableName, True); // 设置数据表
-    end else
-    begin  // 用自身数据集
-      oDataSet := FClientDataSet;
-      oDataSet.SetOptionalParam(szTABLE_NAME, FTableName, True);
+      if (i = 0) then
+        oDataSet := FClientDataSet
+      else
+        oDataSet := TClientDataSet(FSubClientDataSets[i - 1]);
+      oDataSet.SetOptionalParam(szTABLE_NAME, FTableNames[i], True);
+
+      // 远程对象
+      Params.AsInt64['Provider_' + IntToStr(i)] := Int64(FProviders[i]);
+
+      // 远程对象的 Delta
+      if (oDataSet.Changecount > 0) then
+        Params.AsVariant[FTableNames[i]] := oDataSet.Delta
+      else
+        Params.AsVariant[FTableNames[i]] := Null;
     end;
-    Delta := oDataSet.Delta;
-    if not VarIsNull(Delta) then
-    begin
-      Params.LoadFromVariant(Delta); // Delta 当作主体
+    if (Params.Size > 0) then  // 未解析 VarCount
       InternalPost(atDBApplyUpdates);
-    end;
   end;
 end;
 
-procedure TInDBQueryClient.ExecQuery(ADataSet: TClientDataSet);
+procedure TInDBQueryClient.ClearClientDataSets;
+begin
+  // 清除子数据表
+  FSubClientDataSets.Clear;
+end;
+
+constructor TInDBQueryClient.Create(AOwner: TComponent);
+begin
+  inherited;
+  FProviders := TList.Create;
+  FSubClientDataSets := TList.Create;
+  FTableNames := TStringList.Create;
+end;
+
+destructor TInDBQueryClient.Destroy;
+begin
+  FProviders.Free;
+  FSubClientDataSets.Free;
+  FTableNames.Free;
+  inherited;
+end;
+
+procedure TInDBQueryClient.ExecQuery;
 begin
   // SQL 赋值时已经判断 Action 类型，见：THeaderPack.SetSQL
   if CheckState() and Assigned(FParams) then
   begin
-    if Assigned(ADataSet) then  // 用参数设置关联数据集
-      FTempDataSet := ADataSet;
     FParams.FTarget := FDBConnection.FConnectionIndex;  // 对应的数模编号
     if (FParams.SQLName <> '') then  // 可能设 SQLName
       InternalPost(atDBExecQuery)
@@ -1762,41 +1797,67 @@ begin
 end;
 
 procedure TInDBQueryClient.HandleFeedback(Result: TResultParams);
-var
-  oDataSet: TClientDataSet;
   procedure LoadResultDataSets;
+  var
+    i: Integer;
+    XDataSet: TClientDataSet;
+    DataField: TVarField;
   begin
     // 装载查询结果
-    try
-      oDataSet.DisableControls;
-      oDataSet.LoadFromStream(Result.Main);  // 读入数据
-    finally
-      if Assigned(FTempDataSet) then
-        FTempDataSet := Nil;
-      FReadOnly := Result.Action = atDBExecStoredProc;  // 是否只读
-      oDataSet.EnableControls;
-      oDataSet.ReadOnly := FReadOnly;
+    
+    FProviders.Clear;
+    FTableNames.Clear;
+
+    // 是否只读
+    FReadOnly := Result.Action = atDBExecStoredProc;
+
+    // 一个 DataSetProvider 对应两个字段：
+    //   1. 对象 DataSetProvider
+    //   2. DataSetProvider.Data
+    for i := 0 to (Result.VarCount div 2) - 1 do
+    begin
+      if (i = 0) then  // 主数据表
+        XDataSet := FClientDataSet
+      else
+        XDataSet := FSubClientDataSets[i - 1];
+      XDataSet.DisableControls;
+      try
+        DataField := Result.Fields[i * 2 + 1];  // 1,3,5
+
+        // 保存远程对象、数据表名称
+        FProviders.Add(Result.Fields[i * 2].AsObject); // 0,2,4
+        FTableNames.Add(DataField.Name);  // 数据表名称 
+
+        XDataSet.Data := DataField.AsVariant;  // 读入数据
+        XDataSet.ReadOnly := FReadOnly;
+      finally
+        XDataSet.EnableControls;
+      end;
     end;
+  end;
+  procedure MergeChangeDataSets;
+  var
+    i: Integer;
+  begin
+    // 合并本地的更新内容
+    if (FClientDataSet.ChangeCount > 0) then
+      FClientDataSet.MergeChangeLog;
+    for i := 0 to FSubClientDataSets.Count - 1 do
+      with TClientDataSet(FSubClientDataSets[i]) do
+        if (ChangeCount > 0) then
+          MergeChangeLog;
   end;
 begin
   try
     if (Result.ActResult = arOK) then
       case Result.Action of
         atDBExecQuery,  // . 查询数据
-        atDBExecStoredProc: begin  // . 存储过程返回结果
-          if Assigned(FTempDataSet) then  // 置于临时数据集
-            oDataSet := FTempDataSet
-          else
-          if Assigned(FClientDataSet) then
-            oDataSet := FClientDataSet
-          else
-            oDataSet := nil;
-          if Assigned(oDataSet) and  // 2019-03-02 改
-            (Result.VarCount = 0) and Assigned(Result.Main) then
+        atDBExecStoredProc:  // . 存储过程返回结果
+          if Assigned(FClientDataSet) and (Result.VarCount > 0) and
+            (Integer(Result.VarCount) div 2 = FSubClientDataSets.Count + 1) then
             LoadResultDataSets;
-        end;
         atDBApplyUpdates:  // . 更新
-          FClientDataSet.MergeChangeLog;  // 合并本地的更新内容
+          MergeChangeDataSets;  // 合并本地的更新内容
       end;
   finally
     inherited HandleFeedback(Result);

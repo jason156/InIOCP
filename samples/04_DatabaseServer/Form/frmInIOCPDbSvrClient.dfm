@@ -14,7 +14,7 @@ object FormInIOCPDbSvrClient: TFormInIOCPDbSvrClient
   Position = poDesktopCenter
   Scaled = False
   OnCreate = FormCreate
-  PixelsPerInch = 120
+  PixelsPerInch = 96
   TextHeight = 13
   object Image1: TImage
     Left = 481
@@ -222,20 +222,20 @@ object FormInIOCPDbSvrClient: TFormInIOCPDbSvrClient
   object InDBConnection1: TInDBConnection
     OnReturnResult = InDBConnection1ReturnResult
     Connection = InConnection1
+    ConnectionIndex = 0
     Left = 216
     Top = 56
   end
   object InDBQueryClient1: TInDBQueryClient
     OnReturnResult = InDBQueryClient1ReturnResult
-    Connection = InConnection1
+    DBConnection = InDBConnection1
     ClientDataSet = ClientDataSet1
-    TableName = 'TBL_XZQH'
     Left = 64
     Top = 120
   end
   object InDBSQLClient1: TInDBSQLClient
     OnReturnResult = InDBSQLClient1ReturnResult
-    Connection = InConnection1
+    DBConnection = InDBConnection1
     Left = 264
     Top = 120
   end

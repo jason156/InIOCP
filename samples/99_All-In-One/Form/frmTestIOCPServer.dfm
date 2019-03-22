@@ -16,7 +16,7 @@ object FormTestIOCPServer: TFormTestIOCPServer
   OnClose = FormClose
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  PixelsPerInch = 120
+  PixelsPerInch = 96
   TextHeight = 12
   object bvl2: TBevel
     Left = 719
@@ -359,11 +359,15 @@ object FormTestIOCPServer: TFormTestIOCPServer
     TabOrder = 31
     object TabSheet1: TTabSheet
       Caption = #25805#20316#20449#24687
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object mmoClient: TMemo
         Left = 0
         Top = 0
         Width = 574
-        Height = 191
+        Height = 192
         Align = alClient
         ImeName = #35895#27468#25340#38899#36755#20837#27861' 2'
         Lines.Strings = (
@@ -379,7 +383,7 @@ object FormTestIOCPServer: TFormTestIOCPServer
         Left = 0
         Top = 0
         Width = 574
-        Height = 191
+        Height = 192
         Align = alClient
         DataSource = DataSource1
         ImeName = #35895#27468#25340#38899#36755#20837#27861' 2'
@@ -394,6 +398,10 @@ object FormTestIOCPServer: TFormTestIOCPServer
     object ts1: TTabSheet
       Caption = #25991#20214#20114#20256
       ImageIndex = 2
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object lbl1: TLabel
         Left = 24
         Top = 13
@@ -475,6 +483,10 @@ object FormTestIOCPServer: TFormTestIOCPServer
     object TabSheet3: TTabSheet
       Caption = #25968#27169#31649#29702
       ImageIndex = 3
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object MemoDMInfos: TMemo
         Left = 13
         Top = 16

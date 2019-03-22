@@ -9,7 +9,8 @@ interface
 
 uses
   Windows, Classes, SysUtils, Registry, ActiveX, PsAPI, Variants, DB,
-  { $IF CompilerVersion >= 320 Data.Win.ADODB $ELSE} ADODB, // {$ENDIF}, // 高版本是 Data.Win.ADODB
+  // ADODB 的高版本是 Data.Win.ADODB
+  {$IF CompilerVersion >= 32} Data.Win.ADODB, {$ELSE} ADODB, {$IFEND}
   iocp_Winsock2, iocp_zlib, iocp_base,
   iocp_lists, http_base, http_utils;
 

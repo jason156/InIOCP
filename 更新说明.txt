@@ -1,7 +1,7 @@
 // ===================================================== //
 //
 //               InIOCP（小旋风服务套件）
-//            （开源，正式版：2.5.31.1222）
+//            （开源，正式版：2.5.33.1230）
 //
 //        适用于：Delphi 7、Delphi 2007、
 //                Delphi XE、Delphi XE5-XE10
@@ -14,11 +14,23 @@
 //
 // ===================================================== //
 
+2019-03-22，正式版：2.5.33.1230
+    1. 服务端：
+      ..调整 TBaseMessage.LoadFromVariant，可传输多个数据集，方便主从表查询；
+      ..增加 TInIOCPDataModule.InterApplyUpdates，方便更新数据表。
+    2. 客户端：
+      ..增加 TInDBQueryClient.AddClientDataSets，加入子数据表；
+      ..调整 TInDBQueryClient.ApplyUpdates、TInDBQueryClient.ExecQuery；
+      ..删除 TInDBQueryClient.TableName 属性。
+
+    服务端在内存中处理查询数据集，查询时要尽量避免大数据查询。
+
 2019-03-02，正式版：2.5.32.1223
     1. 增加属性 TInDBConnection.ConnectionIndex（数据库连接编号）；
     2. TInDBSQLClient、TInDBQueryClient 增加属性 DBConnection 取代原来的 Connection，
        执行请求时会自动发送当前数据库连接编号；
-    3. 服务端自动设置 TInDBSQLClient、TInDBQueryClient 的当前数据库连接编号。
+    3. 服务端自动设置 TInDBSQLClient、TInDBQueryClient 的当前数据库连接编号；
+    4. 调整 C/S 模式 SessionId 的生成方法。
 
     以后可以直接设 TInDBConnection.ConnectionIndex 而不用执行 TInDBConnection.Connect，
 计划下版实现主从表数据的传输和提交功能。
@@ -34,7 +46,7 @@
 2018-09-10，正式版：2.5.29.1220
     1、InIOCP-JSON 支持记录对象；
     2、文件管理器组件支持 InIOCP-JSON 格式的文件传输；
-    3、排除保存记录对象的一处隐；
+    3、排除保存记录对象的一处隐患；
     4、客户端组件 TFileClient.ListFiles 可以带参数。
 
     例子 FileServer 增加用查询、下载多文件的方法；

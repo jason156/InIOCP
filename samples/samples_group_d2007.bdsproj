@@ -33,8 +33,7 @@
       <Projects Name="InIOCPProxyServer.exe">23_ProxyServer\Package\InIOCPProxyServer.bdsproj</Projects>
       <Projects Name="InIOCPReverseProxy.exe">24_ReverseProxy\package\InIOCPReverseProxy.bdsproj</Projects>
       <Projects Name="InIOCPOutProxyServer.exe">24_ReverseProxy\package\InIOCPOutProxyServer.bdsproj</Projects>
-      <Projects Name="test_iniocp.exe">test\package\test_iniocp.bdsproj</Projects>
-      <Projects Name="Targets">dclInIOCP.bpl InIOCP_all_in_one.exe InIOCPCertifyServer.exe InIOCPMessageServer.exe InIOCPPushMessage.exe InIOCPFileServer.exe inIOCPFileSvrClient.exe InIOCPDBServer.exe inIOCPDbSvrClient.exe InIOCPCustomServer.exe InIOCPStreamServer.exe InIOCPShortConnection.exe InIOCPNewFeatures.exe InIOCPHttpServer.exe InIOCPHTTPService.exe InIOCPWebQueryScores.exe InIOCPWebSocketChat.exe InIOCPWebSocketJSON.exe InIOCPWebSocketDBClient.exe InIOCPWebSocketMsgServer.exe InIOCPWebSocketMsgClient.exe InIOCPProxyServer.exe InIOCPReverseProxy.exe InIOCPOutProxyServer.exe test_iniocp.exe</Projects>
+      <Projects Name="Targets">dclInIOCP.bpl InIOCP_all_in_one.exe InIOCPCertifyServer.exe InIOCPMessageServer.exe InIOCPPushMessage.exe InIOCPFileServer.exe inIOCPFileSvrClient.exe InIOCPDBServer.exe inIOCPDbSvrClient.exe InIOCPCustomServer.exe InIOCPStreamServer.exe InIOCPShortConnection.exe InIOCPNewFeatures.exe InIOCPHttpServer.exe InIOCPHTTPService.exe InIOCPWebQueryScores.exe InIOCPWebSocketChat.exe InIOCPWebSocketJSON.exe InIOCPWebSocketDBClient.exe InIOCPWebSocketMsgServer.exe InIOCPWebSocketMsgClient.exe InIOCPProxyServer.exe InIOCPReverseProxy.exe InIOCPOutProxyServer.exe</Projects>
     </Projects>
     <Dependencies/>
   </Default.Personality>

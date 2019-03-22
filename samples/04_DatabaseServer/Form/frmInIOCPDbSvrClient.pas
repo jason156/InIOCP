@@ -99,10 +99,10 @@ var
 begin
   inQry := TInDBQueryClient.Create(Self);
   try
-    inQry.Connection := InConnection1;
-    InDBConnection1.Connect(1);
+    inQry.DBConnection := InDBConnection1;
+    InDBConnection1.ConnectionIndex := 1; // 可以不执行 InDBConnection1.Connect(1);
     inQry.Params.SQL := 'SELECT * FROM tbl_xzqh';
-    inQry.ExecQuery(ClientDataSet1);
+    inQry.ExecQuery;  // 新版不带参数
   finally
     inQry.Free;
   end;
@@ -158,12 +158,16 @@ procedure TFormInIOCPDbSvrClient.btnDBQueryClick(Sender: TObject);
 begin
   // 查询数据，结果输出到 ClientDataSet1
   //   客户端的 SQL 要和服务端的配合，2.0 增加 SQL、SQLName 属性
+
+  // 查询结果有多个数据集时，要先加入子 TClientDataSet
+  // InDBQueryClient1.AddClientDataSets(???);
+    
   with InDBQueryClient1 do
   begin
     // 执行服务端名称为 Select_tbl_xzqh 的 SQL 命令
     //   当然可以直接传 SQL 命令，见：sql\TdmInIOCPTest.sql
     Params.SQLName := 'Select_tbl_xzqh';  // 区分大小写，见：TInSQLManager.GetSQL
-    ExecQuery;
+    ExecQuery;  // 新版取消参数
   end;
 end;
 

@@ -6,7 +6,7 @@
  *
  * 使用方法：
  *   1、开启日志线程：TLogThread.InitLog(日志存放路径);
- *   2、写入日志：in_log.WriteLog('日志内容')；
+ *   2、写入日志：iocp_log.WriteLog('日志内容')；
  *   3、停止日志线程：TLogThread.StopLog;
  *
  * 使用经验：

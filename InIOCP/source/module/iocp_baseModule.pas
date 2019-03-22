@@ -3,8 +3,8 @@ unit iocp_baseModule;
 interface
 
 uses
-  SysUtils, Classes, DB, DBClient, IniFiles, Variants,
-  iocp_base, iocp_sockets, http_objects, iocp_WsJSON;
+  SysUtils, Classes, DB, DBClient, Provider, IniFiles, Variants,
+  iocp_base, iocp_sockets, http_objects, iocp_msgPacks, iocp_WsJSON;
 
 type
 
@@ -16,7 +16,7 @@ type
   // 请在子类的文件中加单元引用：MidasLib
 
   TExecSQLEvent      = procedure(AParams: TReceiveParams; AResult: TReturnResult) of object;
-  TApplyUpdatesEvent = procedure(const Delta: OleVariant; out ErrorCount: Integer; AResult: TReturnResult) of object;
+  TApplyUpdatesEvent = procedure(Params: TReceiveParams; out ErrorCount: Integer; AResult: TReturnResult) of object;
   THttpRequestEvent  = procedure(Sender: TObject; Request: THttpRequest; Respone: THttpRespone) of object;
   TWebSocketAction   = procedure(Sender: TObject; JSON: TBaseJSON; Result: TResultJSON) of object;
 
@@ -34,6 +34,7 @@ type
   protected
     // 配置数据库连接
     procedure InstallDatabase(const AClassName); virtual;
+    procedure InterApplyUpdates(Params: TReceiveParams; out ErrorCount: Integer);
   public
     { Public declarations }
     procedure ApplyUpdates(AParams: TReceiveParams; AResult: TReturnResult);
@@ -74,8 +75,8 @@ begin
   end else
   if Assigned(FOnApplyUpdates) then
     try
-      if (AParams.Main.Size > 0) then
-        FOnApplyUpdates(AParams.GetData, ErrorCount, AResult)
+      if (AParams.VarCount > 0) then
+        FOnApplyUpdates(AParams, ErrorCount, AResult)
       else begin
         AResult.ActResult := arFail;
         AResult.ErrMsg := 'Delta 为空.';
@@ -186,6 +187,27 @@ begin
     DatabaseConnection.DatabaseName := ReadString(AClassName, 'DatabaseName', '');
     ... ...
   end; }
+end;
+
+procedure TInIOCPDataModule.InterApplyUpdates(Params: TReceiveParams; out ErrorCount: Integer);
+var
+  i: Integer;
+  oDataSetProvider: TDataSetProvider;
+  DeltaField: TVarField;
+begin
+  // 用 Delta 更新数据表
+  // 新版改变：
+  //   第一个字段为用户名称 _UserName，
+  //   以后字段为 Delta 数据和 Int64(DataSetProvider) 值（成对出现），
+  //   Delta 可能有多个，本例子只有一个。
+  // 遍历各 DataSetProvider/Variant 元素（可能为 Null）：
+  for i := 1 to (Params.VarCount - 1) div 2 do  // 第一字段为用户名称 _UserName
+  begin
+    oDataSetProvider := TDataSetProvider(Params.Fields[i * 2 - 1].AsObject); // 1,3,5
+    DeltaField := Params.Fields[i * 2];  // 2,4,6
+    if (DeltaField.IsNull = False) then
+      oDataSetProvider.ApplyUpdates(DeltaField.AsVariant, 0, ErrorCount);
+  end;
 end;
 
 procedure TInIOCPDataModule.WebSocketQuery(JSON: TBaseJSON; Result: TResultJSON);

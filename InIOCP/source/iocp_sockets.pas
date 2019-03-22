@@ -8,7 +8,7 @@ interface
 {$I in_iocp.inc}        // 模式设置
 
 uses
-  windows, Classes, SysUtils, Variants, DateUtils,
+  windows, Classes, SysUtils, Provider, Variants, DateUtils,
   iocp_base, iocp_zlib, iocp_api,
   iocp_Winsock2, iocp_wsExt, iocp_utils,
   iocp_baseObjs, iocp_objPools, iocp_senders,
@@ -209,7 +209,6 @@ type
     FSocket: TIOCPSocket;    // 宿主
   public
     constructor Create(AOwner: TIOCPSocket);
-    function GetData: Variant; override;
     function ToJSON: AnsiString; override;
     procedure CreateAttachment(const LocalPath: string); override;
   public
@@ -228,7 +227,8 @@ type
   public
     constructor Create(AOwner: TIOCPSocket); reintroduce;
     procedure LoadFromFile(const AFileName: String; OpenAtOnce: Boolean = False); override;
-    procedure LoadFromVariant(AData: Variant); override;
+    procedure LoadFromVariant(const AProviders: array of TDataSetProvider;
+                              const ATableNames: array of String); overload; override;
   public
     property ErrMsg: String read GetErrMsg write SetErrMsg;
     property Socket: TIOCPSocket read FSocket;
@@ -1116,11 +1116,6 @@ begin
   end;
 end;
 
-function TReceiveParams.GetData: Variant;
-begin
-  Result := inherited GetData;
-end;
-
 function TReceiveParams.ToJSON: AnsiString;
 begin
   Result := inherited ToJSON;
@@ -1161,9 +1156,10 @@ begin
   end;
 end;
 
-procedure TReturnResult.LoadFromVariant(AData: Variant);
+procedure TReturnResult.LoadFromVariant(const AProviders: array of TDataSetProvider;
+  const ATableNames: array of String);
 begin
-  inherited;  // 直接调用
+  inherited; // 直接调用
 end;
 
 procedure TReturnResult.ReturnHead(AActResult: TActionResult);

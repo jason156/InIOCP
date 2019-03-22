@@ -6,9 +6,8 @@ uses
   // 使用时请加单元引用 MidasLib！
   Windows, Messages, SysUtils, Variants, Classes, Graphics,
   Controls, Forms, Dialogs, DB, DBClient, Provider,
-//  {$IF CompilerVersion >= 32} Data.Win.ADODB {$ELSE}
-  ADODB,
-//  {$ENDIF},  // 高版本是 Data.Win.ADODB
+  // ADODB 的高版本是 Data.Win.ADODB
+  {$IF CompilerVersion >= 32} Data.Win.ADODB, {$ELSE} ADODB, {$IFEND}
   iocp_baseModule, iocp_base, iocp_objPools, iocp_sockets,
   iocp_sqlMgr, http_base, http_objects, iocp_WsJSON, MidasLib;
 
@@ -26,7 +25,7 @@ type
     InSQLManager1: TInSQLManager;
     procedure InIOCPDataModuleCreate(Sender: TObject);
     procedure InIOCPDataModuleDestroy(Sender: TObject);
-    procedure InIOCPDataModuleApplyUpdates(const Delta: OleVariant;
+    procedure InIOCPDataModuleApplyUpdates(Params: TReceiveParams;
       out ErrorCount: Integer; AResult: TReturnResult);
     procedure InIOCPDataModuleExecQuery(AParams: TReceiveParams;
       AResult: TReturnResult);
@@ -76,7 +75,7 @@ begin
   end;  }
 end;
 
-procedure TdmInIOCPTest.InIOCPDataModuleApplyUpdates(const Delta: OleVariant;
+procedure TdmInIOCPTest.InIOCPDataModuleApplyUpdates(Params: TReceiveParams;
   out ErrorCount: Integer; AResult: TReturnResult);
 begin
   // 用 DataSetPrivoder.Delta 更新
@@ -86,7 +85,22 @@ begin
 
   try
     try
-      DataSetProvider1.ApplyUpdates(Delta, 0, ErrorCount);
+      // 新版改变：
+      //  第一个字段为用户名称 _UserName，
+      //  以后字段为 Delta 数据和 Int64(DataSetProvider) 值（成对出现），
+      //  Delta 可能有多个，本例子只有一个。
+
+      // 参考：TBaseMessage.LoadFromVariant
+      //  Params.Fields[0]：用户名 _UserName
+      //  Params.Fields[1].AsObject：对应 Params.Fields[2] 的 DataSetProvider
+      //  Params.Fields[2].Name：字段名称（表名）
+      //  Params.Fields[2].AsVariant：Delta 数据
+
+ {     TDataSetProvider(Params.Fields[1].AsObject).ApplyUpdates(
+                       Params.Fields[2].AsVariant, 0, ErrorCount);    }
+
+      // 执行父类的更新方法
+      InterApplyUpdates(Params, ErrorCount);
     finally
       if ErrorCount = 0 then
       begin
@@ -183,8 +197,13 @@ begin
     end;
   end;
 
-  // 把数据集 Data 转换为流（自动压缩），返回给客户端，执行结果为 arOK
-  AResult.LoadFromVariant(DataSetProvider1.Data);
+  // 新版改进：
+  //   把一组数据集转换为流，返回给客户端，执行结果为 arOK
+  // AResult.LoadFromVariant([数据集a, 数据集b, 数据集c], ['数据表a', '数据表b', '数据表c']);
+  //   数据表n 是 数据集n 对应的数据表名称，用于更新
+  // 如果有多个数据集，第一个为主表
+  
+  AResult.LoadFromVariant([DataSetProvider1], ['tbl_xzqh']);
   AResult.ActResult := arOK;
 
   FQuery.Active := False;   // 关闭

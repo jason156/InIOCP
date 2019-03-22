@@ -8,7 +8,7 @@ interface
 {$I in_iocp.inc}
 
 uses
-  Windows, Classes, SysUtils, Variants,
+  Windows, Classes, SysUtils, Variants, Provider,
   iocp_winSock2, iocp_md5, iocp_mmHash,
   iocp_zlib, iocp_base, iocp_lists,
   iocp_baseObjs;
@@ -88,11 +88,14 @@ type
     function GetAsInt64: Int64;
     function GetAsFloat: Double;
     function GetAsDateTime: TDateTime;
+    function GetAsObject: TObject;
     function GetAsString: AnsiString;
     // Buffer、Record、Stream 加入时是引用
     function GetAsBuffer: TMemBuffer;
     function GetAsRecord: TBasePack;
     function GetAsStream: TStream;
+    // Variant 类型
+    function GetAsVariant: Variant;
   protected
     // 写变量 =======================
     procedure SetAsBoolean(const Value: Boolean);
@@ -122,9 +125,11 @@ type
     property AsFloat: Double read GetAsFloat;
     property AsInteger: Integer read GetAsInteger;
     property AsInt64: Int64 read GetAsInt64;
+    property AsObject: TObject read GetAsObject;
     property AsRecord: TBasePack read GetAsRecord;
     property AsStream: TStream read GetAsStream;
     property AsString: AnsiString read GetAsString;
+    property AsVariant: Variant read GetAsVariant; // 新增
   end;
 
   // ================== 基本消息包 类 ======================
@@ -268,7 +273,6 @@ type
     // ==================================================
   protected
     FMain: TInMemStream;        // 主体数据流
-    function GetData: Variant; virtual;
     function ToJSON: AnsiString; virtual;    
     procedure ToRecord(var ABuffer: PAnsiChar; var ASize: Cardinal);
   protected
@@ -337,7 +341,7 @@ type
     property AsRecord;
     property AsString;
     property AsStream;
-//    property AsVariant;
+    property AsVariant;
   end;
 
   // ================== 收到的消息包 类 ======================
@@ -430,7 +434,8 @@ type
   protected
     procedure AdjustTransmitRange(ChunkSize: Integer);
     procedure CreateStreams(ClearList: Boolean = True); virtual;
-    procedure LoadFromVariant(AData: Variant); virtual;  // 客户端不公开
+    procedure LoadFromVariant(const AProviders: array of TDataSetProvider;
+                              const ATableNames: array of String); overload; virtual; // 客户端不公开
     procedure LoadHead(Data: PWsaBuf);
     procedure NilStreams(CloseAttachment: Boolean);
     procedure OpenLocalFile; virtual;
@@ -782,6 +787,20 @@ begin
     Result := FData.IntegerValue;
 end;
 
+function TVarField.GetAsObject: TObject;
+begin
+  case FData.EleType of
+    etCardinal:
+      Result := TObject(GetAsCardinal);
+    etInteger:
+      Result := TObject(GetAsInteger);
+    etInt64:
+      Result := TObject(GetAsInt64);
+    else
+      Result := nil;
+  end;
+end;
+
 function TVarField.GetAsRecord: TBasePack;
 begin
   // 复制一份，外部要释放 Result（加入时为 TMemoryStream 流引用）
@@ -849,6 +868,18 @@ begin
   end;
 end;
 
+function TVarField.GetAsVariant: Variant;
+begin
+  // 存放时为 Stream，转为 Variant
+  if (FData.DataSize = 0) or (FData.Data = nil) then
+    Result := Null
+  else  // 把流转换为 varByte Variant 类型，解压（数据集或 Delta）
+  if (FData.EleType in [etRecord, etStream]) then
+    Result := iocp_utils.StreamToVariant(TMemoryStream(FData.Data), True)
+  else
+    Result := iocp_utils.StreamToVariant(GetAsStream as TMemoryStream, True);
+end;
+
 function TVarField.GetDataRef: Pointer;
 begin
   Result := FData.Data;  // 变长数据引用地址
@@ -856,7 +887,8 @@ end;
 
 function TVarField.GetIsNull: Boolean;
 begin
-  Result := (FData.EleType = etNull);
+  Result := (FData.EleType = etNull) or
+            (FData.EleType >= etBuffer) and (FData.DataSize = 0);
 end;
 
 function TVarField.GetSize: Integer;
@@ -1204,13 +1236,10 @@ function TBasePack.GetAsVariant(const Index: String): Variant;
 var
   Field: TVarField;
 begin
-  if (FindField(Index, Field) = False) then
-    Result := Null
-  else  // 把流转换为 varByte Variant 类型，压缩（数据集或 Delta）
-  if (Field.VarType in [etRecord, etStream]) then
-    Result := iocp_utils.StreamToVariant(TMemoryStream(Field.FData.Data), True)
+  if FindField(Index, Field) then
+    Result := Field.AsVariant
   else
-    Result := iocp_utils.StreamToVariant(Field.GetAsStream as TMemoryStream, True);
+    Result := Null;
 end;
 
 function TBasePack.GetCount: Integer;
@@ -1555,7 +1584,7 @@ end;
 
 procedure TBasePack.SetAsVariant(const Index: String; const Value: Variant);
 begin
-  // 设置变型变量（Value 不适合大数据）
+  // 设置变型变量（用流，Value 不适合大数据）
   SetAsStream(Index, iocp_utils.VariantToStream(Value, True));
 end;
 
@@ -1778,12 +1807,6 @@ function THeaderPack.GetConnection: Integer;
 begin
   // 数据连接编号
   Result := AsInteger['_Connection'];
-end;
-
-function THeaderPack.GetData: Variant;
-begin
-  // 客户端不公开此函数
-  Result := iocp_utils.StreamToVariant(FMain); // 流转换为 varByte Variant
 end;
 
 function THeaderPack.GetDateTime: TDateTime;
@@ -2606,30 +2629,22 @@ begin
   end;
 end;
 
-procedure TBaseMessage.LoadFromVariant(AData: Variant);
+procedure TBaseMessage.LoadFromVariant(
+  const AProviders: array of TDataSetProvider;
+  const ATableNames: array of String);
+var
+  i: Integer;
 begin
-  // 设置要传输的 Variant 类型数据（数据集）
-  //   数据集属特殊主体（FVarCount = 0），自动压缩，自动清除已有数据，
-  //   不要传入 String 等其他类型数据!
-  
-  if VarIsNull(AData) then
-    Exit;
-
-  // 清除已有数据
-  if (FSize > 0) then
-    inherited Clear;
-  if Assigned(FMain) then
-    FMain.Free;  // 释放
-  if Assigned(FAttachment) then
-    FreeAndNil(FAttachment);
-
-  FMain := iocp_utils.VariantToStream(AData, True) as TInMemStream;
-  FDataSize := FMain.Size;
-
-  FAttachZiped := True;
-  FZipLevel := zcDefault;
-  FVarCount := 0;  // 必须
-  
+  // 加入 Variant 数组（数据集列表），ATableNames 为数据表名称数组
+  //  参数：[数据集a, 数据集b, 数据集c], ['数据表a', '数据表b', '数据表c']
+  //        数据表n 是 数据集n 对应的数据表名称，用于更新
+  // 如果有多个数据集，第一个为主表
+  if (High(AProviders) = High(ATableNames)) then
+    for i := 0 to High(ATableNames) do
+    begin
+      AsInt64['Provider_' + IntToStr(i)] := Int64(AProviders[i]);  // 对象
+      AsVariant[ATableNames[i]] := AProviders[i].Data;  // 数据
+    end;
 end;
 
 procedure TBaseMessage.NilStreams(CloseAttachment: Boolean);
