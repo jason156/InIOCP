@@ -425,10 +425,9 @@ object FormInIOCPWebQueryScores: TFormInIOCPWebQueryScores
     Top = 112
   end
   object InHttpDataProvider1: TInHttpDataProvider
-    KeepAlive = True
     OnAccept = InHttpDataProvider1Accept
-    RootDirectory = 'web_site'
     OnGet = InHttpDataProvider1Get
+    RootDirectory = 'web_site'
     Left = 312
     Top = 112
   end

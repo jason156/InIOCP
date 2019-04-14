@@ -20,11 +20,10 @@ object InIOCP_HTTP_Service: TInIOCP_HTTP_Service
     Top = 48
   end
   object InHttpDataProvider1: TInHttpDataProvider
-    KeepAlive = True
-    OnInvalidSession = InHttpDataProvider1InvalidSession
-    RootDirectory = 'web_site'
     OnGet = InHttpDataProvider1Get
+    OnInvalidSession = InHttpDataProvider1InvalidSession
     OnPost = InHttpDataProvider1Post
+    RootDirectory = 'web_site'
     Left = 192
     Top = 48
   end

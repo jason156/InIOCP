@@ -918,7 +918,6 @@ object FormTestIOCPServer: TFormTestIOCPServer
     Top = 432
   end
   object InHttpDataProvider1: TInHttpDataProvider
-    KeepAlive = True
     OnAccept = InHttpDataProvider1Accept
     OnGet = InHttpDataProvider1Get
     OnInvalidSession = InHttpDataProvider1InvalidSession

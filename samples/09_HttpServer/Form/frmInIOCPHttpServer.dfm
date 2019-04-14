@@ -345,13 +345,12 @@ object FormInIOCPHttpServer: TFormInIOCPHttpServer
     Top = 96
   end
   object InHttpDataProvider1: TInHttpDataProvider
-    KeepAlive = True
     OnAccept = InHttpDataProvider1Accept
+    OnGet = InHttpDataProvider1Get
     OnInvalidSession = InHttpDataProvider1InvalidSession
+    OnPost = InHttpDataProvider1Post
     OnReceiveFile = InHttpDataProvider1ReceiveFile
     RootDirectory = 'web_site'
-    OnGet = InHttpDataProvider1Get
-    OnPost = InHttpDataProvider1Post
     Left = 432
     Top = 96
   end

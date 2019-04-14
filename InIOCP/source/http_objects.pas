@@ -558,6 +558,7 @@ end;
 constructor THttpDataProvider.Create(AOwner: TComponent);
 begin
   inherited;
+  FKeepAlive := True; // д╛хож╣
   FMaxContentLength := MAX_CONTENT_LENGTH;
   FPreventAttack := False;
   FSessionMgr := THttpSessionManager.Create(512);

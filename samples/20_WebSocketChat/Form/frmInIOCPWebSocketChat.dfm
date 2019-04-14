@@ -68,12 +68,22 @@ object FormInIOCPWSChat: TFormInIOCPWSChat
     ExplicitTop = 8
     ExplicitWidth = 561
     inherited Label3: TLabel
+      Left = 326
       Top = 28
+      Width = 68
+      Height = 15
+      ExplicitLeft = 326
       ExplicitTop = 28
+      ExplicitWidth = 68
+      ExplicitHeight = 15
     end
     inherited lblWorkCount: TLabel
       Top = 28
+      Width = 8
+      Height = 15
       ExplicitTop = 28
+      ExplicitWidth = 8
+      ExplicitHeight = 15
     end
     inherited bvl1: TBevel
       Top = 48
@@ -81,49 +91,183 @@ object FormInIOCPWSChat: TFormInIOCPWSChat
       ExplicitTop = 48
       ExplicitHeight = 1
     end
+    inherited lbl1: TLabel
+      Left = 35
+      Width = 68
+      Height = 15
+      ExplicitLeft = 35
+      ExplicitWidth = 68
+      ExplicitHeight = 15
+    end
+    inherited lbl12: TLabel
+      Left = 326
+      Width = 68
+      Height = 15
+      ExplicitLeft = 326
+      ExplicitWidth = 68
+      ExplicitHeight = 15
+    end
+    inherited lblAcceptExCount: TLabel
+      Left = 16
+      Width = 87
+      Height = 15
+      ExplicitLeft = 16
+      ExplicitWidth = 87
+      ExplicitHeight = 15
+    end
+    inherited lbl14: TLabel
+      Left = 176
+      Width = 68
+      Height = 15
+      ExplicitLeft = 176
+      ExplicitWidth = 68
+      ExplicitHeight = 15
+    end
+    inherited lbl16: TLabel
+      Left = 26
+      Width = 77
+      Height = 15
+      ExplicitLeft = 26
+      ExplicitWidth = 77
+      ExplicitHeight = 15
+    end
+    inherited lblMemeryUsed: TLabel
+      Left = 326
+      Width = 68
+      Height = 15
+      ExplicitLeft = 326
+      ExplicitWidth = 68
+      ExplicitHeight = 15
+    end
     inherited lbl19: TLabel
+      Left = 35
       Top = 28
+      Width = 68
+      Height = 15
+      ExplicitLeft = 35
       ExplicitTop = 28
+      ExplicitWidth = 68
+      ExplicitHeight = 15
+    end
+    inherited lbl3: TLabel
+      Left = 50
+      Width = 53
+      Height = 15
+      ExplicitLeft = 50
+      ExplicitWidth = 53
+      ExplicitHeight = 15
+    end
+    inherited lbl6: TLabel
+      Left = 35
+      Width = 68
+      Height = 15
+      ExplicitLeft = 35
+      ExplicitWidth = 68
+      ExplicitHeight = 15
+    end
+    inherited lblLeftEdge: TLabel
+      Left = 11
+      Width = 92
+      Height = 15
+      ExplicitLeft = 11
+      ExplicitWidth = 92
+      ExplicitHeight = 15
     end
     inherited lblAcceptExCnt: TLabel
       Left = 108
+      Width = 8
+      Height = 15
       ExplicitLeft = 108
+      ExplicitWidth = 8
+      ExplicitHeight = 15
     end
     inherited lblDataByteInfo: TLabel
       Left = 108
+      Width = 8
+      Height = 15
       ExplicitLeft = 108
+      ExplicitWidth = 8
+      ExplicitHeight = 15
+    end
+    inherited lblCheckTime: TLabel
+      Width = 8
+      Height = 15
+      ExplicitWidth = 8
+      ExplicitHeight = 15
     end
     inherited lblClientInfo: TLabel
       Left = 108
       Top = 58
+      Width = 8
+      Height = 15
       ExplicitLeft = 108
       ExplicitTop = 58
+      ExplicitWidth = 8
+      ExplicitHeight = 15
     end
     inherited lblCliPool: TLabel
+      Left = 50
       Top = 58
+      Width = 53
+      Height = 15
+      ExplicitLeft = 50
       ExplicitTop = 58
+      ExplicitWidth = 53
+      ExplicitHeight = 15
+    end
+    inherited lblDBConCount: TLabel
+      Width = 8
+      Height = 15
+      ExplicitWidth = 8
+      ExplicitHeight = 15
     end
     inherited lblIODataInfo: TLabel
       Left = 108
+      Width = 8
+      Height = 15
       ExplicitLeft = 108
+      ExplicitWidth = 8
+      ExplicitHeight = 15
+    end
+    inherited lblMemUsed: TLabel
+      Width = 8
+      Height = 15
+      ExplicitWidth = 8
+      ExplicitHeight = 15
     end
     inherited lblDataPackInf: TLabel
       Left = 108
+      Width = 8
+      Height = 15
       ExplicitLeft = 108
+      ExplicitWidth = 8
+      ExplicitHeight = 15
     end
     inherited lblStartTime: TLabel
       Left = 108
+      Width = 8
+      Height = 15
       ExplicitLeft = 108
+      ExplicitWidth = 8
+      ExplicitHeight = 15
     end
     inherited lblThreadInfo: TLabel
       Left = 108
+      Width = 8
+      Height = 15
       ExplicitLeft = 108
+      ExplicitWidth = 8
+      ExplicitHeight = 15
     end
     inherited lblWorkTimeLength: TLabel
       Left = 108
       Top = 28
+      Width = 8
+      Height = 15
       ExplicitLeft = 108
       ExplicitTop = 28
+      ExplicitWidth = 8
+      ExplicitHeight = 15
     end
   end
   object InIOCPServer1: TInIOCPServer
@@ -139,7 +283,6 @@ object FormInIOCPWSChat: TFormInIOCPWSChat
     Top = 240
   end
   object InHttpDataProvider1: TInHttpDataProvider
-    KeepAlive = False
     OnAccept = InHttpDataProvider1Accept
     WebSocketManager = InWebSocketManager1
     Left = 232

@@ -247,7 +247,6 @@ object FormInIOCPWsJSON: TFormInIOCPWsJSON
     Top = 200
   end
   object InHttpDataProvider1: TInHttpDataProvider
-    KeepAlive = True
     OnAccept = InHttpDataProvider1Accept
     WebSocketManager = InWebSocketManager1
     Left = 224
