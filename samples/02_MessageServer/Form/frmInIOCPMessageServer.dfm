@@ -249,6 +249,8 @@ object FormInIOCPMessageServer: TFormInIOCPMessageServer
     ThreadOptions.BusinessThreadCount = 8
     ThreadOptions.PushThreadCount = 4
     ThreadOptions.WorkThreadCount = 4
+    OnConnect = InIOCPServer1Connect
+    OnDisconnect = InIOCPServer1Disconnect
     AfterOpen = InIOCPServer1AfterOpen
     AfterClose = InIOCPServer1AfterClose
     Left = 256

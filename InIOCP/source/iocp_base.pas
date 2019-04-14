@@ -123,6 +123,8 @@ type
     atCallFunction,           // 调用远程函数
     atCustomAction,           // 自定义（TCustomClient 操作）
 
+//    atBackGround,             // 后台操作
+
     // 特殊操作
     atNilCancel,              // 客户端取消操作
 
@@ -164,6 +166,8 @@ type
     arRefuse,                 // 拒绝服务
     arTimeOut,                // 超时关闭
 
+//    arBackDone,               // 后台操作完成
+
     // ===== 异常操作结果 =====
 
     arErrAnalyse,             // 变量解析异常
@@ -174,7 +178,8 @@ type
     arErrNoAnswer,            // 无应答
     arErrPush,                // 推送异常
     arErrUser,                // 非法用户
-    arErrWork                 // 执行任务异常
+    arErrWork                // 执行任务异常
+//    atErrBack                 // 后台执行异常
   );
 
   // C/S 数据校验类型

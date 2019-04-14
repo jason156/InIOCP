@@ -16,7 +16,7 @@ object FormTestIOCPServer: TFormTestIOCPServer
   OnClose = FormClose
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  PixelsPerInch = 96
+  PixelsPerInch = 120
   TextHeight = 12
   object bvl2: TBevel
     Left = 719
@@ -354,20 +354,16 @@ object FormTestIOCPServer: TFormTestIOCPServer
     Top = 382
     Width = 582
     Height = 219
-    ActivePage = TabSheet2
+    ActivePage = TabSheet1
     MultiLine = True
     TabOrder = 31
     object TabSheet1: TTabSheet
       Caption = #25805#20316#20449#24687
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object mmoClient: TMemo
         Left = 0
         Top = 0
         Width = 574
-        Height = 192
+        Height = 191
         Align = alClient
         ImeName = #35895#27468#25340#38899#36755#20837#27861' 2'
         Lines.Strings = (
@@ -383,7 +379,7 @@ object FormTestIOCPServer: TFormTestIOCPServer
         Left = 0
         Top = 0
         Width = 574
-        Height = 192
+        Height = 191
         Align = alClient
         DataSource = DataSource1
         ImeName = #35895#27468#25340#38899#36755#20837#27861' 2'
@@ -398,10 +394,6 @@ object FormTestIOCPServer: TFormTestIOCPServer
     object ts1: TTabSheet
       Caption = #25991#20214#20114#20256
       ImageIndex = 2
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object lbl1: TLabel
         Left = 24
         Top = 13
@@ -483,10 +475,6 @@ object FormTestIOCPServer: TFormTestIOCPServer
     object TabSheet3: TTabSheet
       Caption = #25968#27169#31649#29702
       ImageIndex = 3
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object MemoDMInfos: TMemo
         Left = 13
         Top = 16
@@ -768,8 +756,10 @@ object FormTestIOCPServer: TFormTestIOCPServer
     ThreadOptions.BusinessThreadCount = 8
     ThreadOptions.PushThreadCount = 4
     ThreadOptions.WorkThreadCount = 4
+    OnConnect = InIOCPServer1Connect
     OnDataReceive = InIOCPServer1DataReceive
     OnDataSend = InIOCPServer1DataSend
+    OnDisconnect = InIOCPServer1Disconnect
     AfterOpen = InIOCPServer1AfterOpen
     AfterClose = InIOCPServer1AfterOpen
     Left = 40
@@ -930,12 +920,12 @@ object FormTestIOCPServer: TFormTestIOCPServer
   object InHttpDataProvider1: TInHttpDataProvider
     KeepAlive = True
     OnAccept = InHttpDataProvider1Accept
+    OnGet = InHttpDataProvider1Get
     OnInvalidSession = InHttpDataProvider1InvalidSession
+    OnPost = InHttpDataProvider1Post
     OnReceiveFile = InHttpDataProvider1ReceiveFile
     RootDirectory = 'web_site'
     WebSocketManager = InWebSocketManager1
-    OnGet = InHttpDataProvider1Get
-    OnPost = InHttpDataProvider1Post
     Left = 464
     Top = 240
   end

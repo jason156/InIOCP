@@ -14,7 +14,7 @@ object FormInIOCPStreamServer: TFormInIOCPStreamServer
   Position = poDesktopCenter
   Scaled = False
   OnCreate = FormCreate
-  PixelsPerInch = 120
+  PixelsPerInch = 96
   TextHeight = 12
   object Memo1: TMemo
     Left = 8
@@ -24,7 +24,11 @@ object FormInIOCPStreamServer: TFormInIOCPStreamServer
     ImeName = #35895#27468#25340#38899#36755#20837#27861' 2'
     Lines.Strings = (
       'TInIOCPServer '#19981#24102#20219#20309#31649#29702#22120#65292#36825#26159#21407#22987#25968#25454#27969#26381#21153#12290
-      #35831#29992' Socket '#36830#25509#12289#21457#36865#20219#20309#25968#25454#65292' '#21487#20197#29992#24037#20855#36719#20214' httptest.exe '#27979#35797#12290)
+      #35831#29992' Socket '#36830#25509#12289#21457#36865#20219#20309#25968#25454#65292' '#21487#25171#24320#27983#35272#22120#35775#38382#65306
+      ''
+      'http://127.0.0.1:800/'
+      ''
+      #20063#21487#20197#29992#24037#20855#36719#20214' ab.exe '#27979#35797#12290)
     TabOrder = 0
   end
   object btnStart: TButton
@@ -241,6 +245,7 @@ object FormInIOCPStreamServer: TFormInIOCPStreamServer
   end
   object InIOCPServer1: TInIOCPServer
     ServerAddr = '127.0.0.1'
+    ServerPort = 800
     StartParams.TimeOut = 0
     ThreadOptions.BusinessThreadCount = 8
     ThreadOptions.PushThreadCount = 4

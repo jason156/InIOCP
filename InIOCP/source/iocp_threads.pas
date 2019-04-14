@@ -26,7 +26,7 @@ type
     procedure DoMethod; override;
   public
     constructor Create;
-    procedure AddSocket(const Socket: TObject);
+    procedure AddSocket(const Socket: TBaseSocket);
     procedure WaitFor;    // 覆盖
   end;
 
@@ -51,6 +51,7 @@ type
 
   TBusiWorkManager = class(TObject)
   private
+    FServer: TObject;            // TInIOCPServer
     FSemaphore: THandle;         // 线程共享的信号灯
 
     // 线程数组
@@ -65,11 +66,11 @@ type
 
     FActiveCount: Integer;       // 类别任务数
     FActiveThreadCount: Integer; // 活动线程数
-
+    FWorkTotalCount: IOCP_LARGE_INTEGER;  // 已执行的任务总数
+    
     function CreateWorker(Index: Integer): TBusiWorker;
     function GetDataModuleState(Index: Integer): Boolean;
     function GetWork(var Socket: TObject): Boolean;
-    function GetWorkTotalCount: IOCP_LARGE_INTEGER;
 
     procedure InternalAddRemove(Index: Integer; AddMode: Boolean);
     procedure InternalStop;
@@ -85,22 +86,23 @@ type
     property ActiveCount: Integer read FActiveCount;
     property ActiveThreadCount: Integer read FActiveThreadCount;
     property DataModuleState[Index: Integer]: Boolean read GetDataModuleState;
-    property WorkTotalCount: IOCP_LARGE_INTEGER read GetWorkTotalCount;
+    property WorkTotalCount: IOCP_LARGE_INTEGER read FWorkTotalCount;
   end;
 
   // ===================== 推送对象/任务 =====================
 
   TPushMessage = class(TInList)
   private
-    FPool: TIOCPSocketPool;     // 对象池
+    FObjPool: TIOCPSocketPool;  // 对象池
+    FBufPool: TIODataPool;      // 内存池
     FPushBuf: PPerIOData;       // 待推送消息
     FBroadcast: Boolean;        // 广播模式
     FClientCount: Integer;      // 估计广播目的数
     FTickCount: Cardinal;       // 加入时间毫秒
   public
-    constructor Create(AOwner: TObject; IOKind: TIODataType; MsgSize: Cardinal); overload;
     constructor Create(Msg: PPerIOData; Broadcast: Boolean = False); overload;
-    constructor Create(APool: TIOCPSocketPool; IOKind: TIODataType); overload;
+    constructor Create(Server: TObject; IOKind: TIODataType); overload;
+    constructor Create(Socket: TBaseSocket; IOKind: TIODataType; MsgSize: Cardinal); overload;
     destructor Destroy; override;
   public
     property PushBuf: PPerIOData read FPushBuf;
@@ -112,7 +114,8 @@ type
 
   TPushThread = class(TCycleThread)
   private
-    FManager: TPushMsgManager;  // 管理器
+    FBusiManager: TBusiWorkManager;  // 业务管理器
+    FPushManager: TPushMsgManager;   // 推送管理器
     FMsg: TPushMessage;         // 当前待推送消息
     FSocket: TBaseSocket;       // 当前套接字对象
     procedure PushMesssage;
@@ -120,7 +123,7 @@ type
     procedure AfterWork; override;
     procedure DoMethod; override;
   public
-    constructor Create(AManager: TPushMsgManager);
+    constructor Create(APushManager: TPushMsgManager; ABusiManager: TBusiWorkManager);
   end;
 
   // ===================== 推送消息缓冲池 =====================
@@ -170,7 +173,7 @@ type
     procedure ActivateThreads;
     procedure InterAdd(Msg: TPushMessage);
   public
-    constructor Create(AThreadCount, AMaxPushCount: Integer);
+    constructor Create(ABusiManger: TBusiWorkManager; AThreadCount, AMaxPushCount: Integer);
     destructor Destroy; override;
     function AddWork(Msg: TPushMessage): Boolean;
     procedure StopThreads;
@@ -188,17 +191,13 @@ uses
   iocp_log, iocp_utils, http_objects;
 
 type
-  TPushMsgSocket = class(TBaseSocket);
-
-var
-  FServer: TInIOCPServer = nil;  // 服务器
-  FWorkTotalCount: IOCP_LARGE_INTEGER = 0;  // 已执行的任务总数
+  TBaseSocketRef = class(TBaseSocket);
 
 { TCloseSocketThread }
 
-procedure TCloseSocketThread.AddSocket(const Socket: TObject);
+procedure TCloseSocketThread.AddSocket(const Socket: TBaseSocket);
 begin
-  // 调用前已经加全局锁
+  // 加入要关闭的 Socket
   FLock.Acquire;
   try
     FSockets.Add(Socket);
@@ -236,9 +235,10 @@ begin
       FLock.Release;
     end;
     try
-      Socket.Close;
+      if Socket.Connected then  // 可能接入时被关闭
+        Socket.Close;
     finally
-      Socket.Pool.Push(Socket.LinkNode);
+      Socket.ObjPool.Push(Socket.LinkNode);
     end;
   end;
 end;
@@ -256,7 +256,7 @@ procedure TBusiThread.AfterWork;
 begin
   // 启用线程数 -1
   Windows.InterlockedDecrement(FManager.FThreadCount);
-  FServer.IODataPool.Push(FSender.SendBuf^.Node);  // 释放发送缓存
+  TInIOCPServer(FManager.FServer).IODataPool.Push(FSender.SendBuf^.Node);  // 释放发送缓存
   FSender.Free;
 end;
 
@@ -266,7 +266,7 @@ begin
   FManager := AManager;
   FSemaphore := FManager.FSemaphore;  // 引用
   FSender := TServerTaskSender.Create;  // 给 Socket 引用
-  FSender.SendBuf := FServer.IODataPool.Pop^.Data;
+  FSender.SendBuf := TInIOCPServer(FManager.FServer).IODataPool.Pop^.Data;
 end;
 
 procedure TBusiThread.DoMethod;
@@ -279,13 +279,13 @@ begin
       SOCKET_LOCK_OK: begin  // 加锁成功
         Windows.InterlockedIncrement(FManager.FActiveThreadCount);  // 活动业务线程+
         try
-          FSocket.DoWork(FWorker, FSender)  // 传递 FWorker, FSender
+          TBaseSocketRef(FSocket).DoWork(FWorker, FSender)  // 传递 FWorker, FSender
         finally
           Windows.InterlockedDecrement(FManager.FActiveThreadCount); // 活动业务线程-
           {$IFDEF WIN_64}
-          System.AtomicIncrement(FWorkTotalCount);  // 执行总数+
+          System.AtomicIncrement(FManager.FWorkTotalCount);  // 执行总数+
           {$ELSE}
-          Windows.InterlockedIncrement(FWorkTotalCount);  // 执行总数+
+          Windows.InterlockedIncrement(FManager.FWorkTotalCount);  // 执行总数+
           {$ENDIF}
         end;
       end;
@@ -339,7 +339,7 @@ begin
   FSemaphore := CreateSemapHore(Nil, 0, MaxInt, Nil);
 
   // 2. 服务器、业务线程数
-  FServer := TInIOCPServer(AServer);
+  FServer := AServer;
   FThreadCount := AThreadCount;
 
   SetLength(FThreads, FThreadCount);
@@ -359,12 +359,6 @@ begin
     FThreads[i] := Thread;
     Thread.Resume;
   end;
-
-  // 5. 设置 iocp_managers, iocp_sockets、http_base 的单元变量
-  TBusiWorker.SetUnitVariables(Self);
-  TBaseSocket.SetUnitVariables(AServer);
-  THttpDataProvider.SetDataProvider(FServer.HttpDataProvider);
-
 end;
 
 function TBusiWorkManager.CreateWorker(Index: Integer): TBusiWorker;
@@ -398,12 +392,6 @@ begin
   finally
     FLock.Release;
   end;
-end;
-
-function TBusiWorkManager.GetWorkTotalCount: IOCP_LARGE_INTEGER;
-begin
-  // 取总执行数
-  Result := FWorkTotalCount;
 end;
 
 procedure TBusiWorkManager.InternalAddRemove(Index: Integer; AddMode: Boolean);
@@ -480,11 +468,6 @@ begin
     FLock := Nil;
     FSockets := nil;
     FBackSockets := nil;
-
-    // 清单元变量
-    TBusiWorker.SetUnitVariables(nil);
-    TBaseSocket.SetUnitVariables(nil);
-    THttpDataProvider.SetDataProvider(nil);    
   end;
 end;
 
@@ -514,9 +497,10 @@ begin
   // 发送消息个列表的客户端，或广播
   FBroadcast := Broadcast;  // ！
   FTickCount := GetTickCount;  // 当前时间
-  FPool := TBaseSocket(Msg^.Owner).Pool;
+  FObjPool := TBaseSocket(Msg^.Owner).ObjPool;
+  FBufPool := TInIOCPServer(TBaseSocket(Msg^.Owner).Server).IODataPool;  
 
-  FPushBuf := FServer.IODataPool.Pop^.Data;
+  FPushBuf := FBufPool.Pop^.Data;
   FPushBuf^.IOType := ioPush; // 推送
   FPushBuf^.Data.len := Msg^.Overlapped.InternalHigh; // 消息大小
   
@@ -524,39 +508,41 @@ begin
   System.Move(Msg^.Data.buf^, FPushBuf^.Data.buf^, FPushBuf^.Data.len);
 end;
 
-constructor TPushMessage.Create(AOwner: TObject; IOKind: TIODataType; MsgSize: Cardinal);
-begin
-  inherited Create;
-  // 建一条给 AOwner 的 IOKind 类型消息，以便外部构建消息内容
-  FBroadcast := False;
-  FTickCount := GetTickCount;  // 当前时间
-  FPool := TBaseSocket(AOwner).Pool;
-  
-  FPushBuf := FServer.IODataPool.Pop^.Data;
-
-  FPushBuf^.IOType := IOKind; // 类型
-  FPushBuf^.Data.len := MsgSize;  // 内容长度
-
-  inherited Add(AOwner); // 只有一个节点
-end;
-
-constructor TPushMessage.Create(APool: TIOCPSocketPool; IOKind: TIODataType);
+constructor TPushMessage.Create(Server: TObject; IOKind: TIODataType);
 begin
   inherited Create;
   // 建一条广播消息，外部设置内容
   FBroadcast := True;
   FTickCount := GetTickCount;  // 当前时间
-  FPool := APool;
+  FObjPool := TInIOCPServer(Server).IOCPSocketPool;
+  FBufPool := TInIOCPServer(Server).IODataPool;
 
-  FPushBuf := FServer.IODataPool.Pop^.Data;
+  FPushBuf := FBufPool.Pop^.Data;
 
   FPushBuf^.IOType := IOKind; // 类型
   FPushBuf^.Data.len := 0;  // 内容长度
 end;
 
+constructor TPushMessage.Create(Socket: TBaseSocket; IOKind: TIODataType; MsgSize: Cardinal);
+begin
+  inherited Create;
+  // 建一条给 AOwner 的 IOKind 类型消息，以便外部构建消息内容
+  FBroadcast := False;
+  FTickCount := GetTickCount;  // 当前时间
+  FObjPool := Socket.ObjPool;
+  FBufPool := TInIOCPServer(Socket.Server).IODataPool;
+
+  FPushBuf := FBufPool.Pop^.Data;
+
+  FPushBuf^.IOType := IOKind; // 类型
+  FPushBuf^.Data.len := MsgSize;  // 内容长度
+
+  inherited Add(Socket); // 只有一个节点
+end;
+
 destructor TPushMessage.Destroy;
 begin
-  FServer.IODataPool.Push(FPushBuf^.Node);
+  FBufPool.Push(FPushBuf^.Node);
   inherited;
 end;
 
@@ -565,14 +551,15 @@ end;
 procedure TPushThread.AfterWork;
 begin
   // 启用线程数 -1
-  Windows.InterlockedDecrement(FManager.FThreadCount);
+  Windows.InterlockedDecrement(FPushManager.FThreadCount);
 end;
 
-constructor TPushThread.Create(AManager: TPushMsgManager);
+constructor TPushThread.Create(APushManager: TPushMsgManager; ABusiManager: TBusiWorkManager);
 begin
   inherited Create(False);
-  FManager := AManager;
-  FSemaphore := FManager.FSemaphore;  // 引用
+  FBusiManager := ABusiManager;
+  FPushManager := APushManager;
+  FSemaphore := APushManager.FSemaphore;  // 引用
 end;
 
 procedure TPushThread.DoMethod;
@@ -584,16 +571,16 @@ begin
   //   只要没关闭 Socket，一定要发送一次
 
   // 给多点机会业务线程抢 Socket 资源，等一下
-  WaitForSingleObject(FManager.FWaitSemaphore, 8);
+  WaitForSingleObject(FPushManager.FWaitSemaphore, 8);
 
   Trigger := False;
-  while (Terminated = False) and FManager.GetWork(FMsg) do
+  while (Terminated = False) and FPushManager.GetWork(FMsg) do
   begin
     // 1. 广播，建在线客户端列表
     if FMsg.FBroadcast then
     begin
       FMsg.FBroadcast := False;  // 下次不用加
-      FMsg.FPool.GetSockets(FMsg);
+      FMsg.FObjPool.GetSockets(FMsg);
     end;
 
     // 2. 逐一推送
@@ -606,13 +593,13 @@ begin
     end;
 
     // 等一下
-    WaitForSingleObject(FManager.FWaitSemaphore, 8);
+    WaitForSingleObject(FPushManager.FWaitSemaphore, 8);
 
     // 3. 处理结果
     if (FMsg.Count > 0) then // 未全部发出
     begin
       Trigger := True;
-      FManager.InterAdd(FMsg);  // 再加入
+      FPushManager.InterAdd(FMsg);  // 再加入
       Break;  // 下次继续
     end else
     begin
@@ -622,7 +609,7 @@ begin
   end;
 
   if Trigger then
-    FManager.ActivateThreads;
+    FPushManager.ActivateThreads;
     
 end;
 
@@ -633,16 +620,16 @@ begin
 
     SOCKET_LOCK_OK: begin  // 加锁成功
       // 工作量统计到 FTotalCount
-      Windows.InterlockedIncrement(FManager.FActiveThreadCount); // 活动推送线程+
+      Windows.InterlockedIncrement(FPushManager.FActiveThreadCount); // 活动推送线程+
       try
-        TPushMsgSocket(FSocket).InternalPush(FMsg.FPushBuf); // 推送
+        TBaseSocketRef(FSocket).InternalPush(FMsg.FPushBuf); // 推送
       finally
-        Windows.InterlockedDecrement(FManager.FActiveThreadCount); // 活动业务线程-
+        Windows.InterlockedDecrement(FPushManager.FActiveThreadCount); // 活动业务线程-
         {$IFDEF WIN_64}
-        System.AtomicIncrement(FWorkTotalCount);  // 执行总数+
+        System.AtomicIncrement(FBusiManager.FWorkTotalCount);  // 执行总数+
         {$ELSE}
-        Windows.InterlockedIncrement(FWorkTotalCount);  // 执行总数+
-       {$ENDIF}
+        Windows.InterlockedIncrement(FBusiManager.FWorkTotalCount);  // 执行总数+
+        {$ENDIF}
       end;
     end;
 
@@ -802,7 +789,7 @@ begin
 
 end;
 
-constructor TPushMsgManager.Create(AThreadCount, AMaxPushCount: Integer);
+constructor TPushMsgManager.Create(ABusiManger: TBusiWorkManager; AThreadCount, AMaxPushCount: Integer);
 var
   i: Integer;
 begin
@@ -825,7 +812,7 @@ begin
 
   for i := 0 to High(FThreads) do
   begin
-    FThreads[i] := TPushThread.Create(Self);
+    FThreads[i] := TPushThread.Create(Self, ABusiManger);
     FThreads[i].Resume;
   end;
 
@@ -867,7 +854,7 @@ begin
   try
     // 估算待推送数
     if Msg.FBroadcast then
-      Msg.FClientCount := Msg.FPool.UsedCount
+      Msg.FClientCount := Msg.FObjPool.UsedCount
     else
       Msg.FClientCount := 1;
     Inc(FPushMsgCount, Msg.FClientCount);

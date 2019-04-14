@@ -171,7 +171,7 @@ begin
 
   // 2. 从工作路径下载文件
   begin
-    FileName := Params.Socket.Data^.WorkDir + FileName;
+    FileName := Params.Socket.Envir^.WorkDir + FileName;
     InFileManager1.OpenLocalFile(Params.Socket, FileName)
   end;
 
@@ -194,7 +194,7 @@ procedure TFormInIOCPFileServer.InFileManager1DeleteFile(Sender: TObject;
   Params: TReceiveParams; Result: TReturnResult);
 begin
   // 请求删除文件，应在客户端先确认
-  if DeleteFile(Params.Socket.Data^.WorkDir + Params.FileName) then
+  if DeleteFile(Params.Socket.Envir^.WorkDir + Params.FileName) then
     Result.ActResult := arOK
   else
     Result.ActResult := arFail;
@@ -211,8 +211,8 @@ procedure TFormInIOCPFileServer.InFileManager1RenameFile(Sender: TObject;
   Params: TReceiveParams; Result: TReturnResult);
 begin
   // 改工作目录下的文件名
-  if RenameFile(Params.Socket.Data^.WorkDir + Params.FileName,
-                Params.Socket.Data^.WorkDir + Params.NewFileName) then
+  if RenameFile(Params.Socket.Envir^.WorkDir + Params.FileName,
+                Params.Socket.Envir^.WorkDir + Params.NewFileName) then
     Result.ActResult := arOK
   else
     Result.ActResult := arFail;

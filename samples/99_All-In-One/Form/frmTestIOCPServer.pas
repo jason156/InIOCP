@@ -243,6 +243,8 @@ type
     procedure InWSConnection1ReturnResult(Sender: TObject; Result: TJSONResult);
     procedure btnWSListFilesClick(Sender: TObject);
     procedure InWSConnection1AfterConnect(Sender: TObject);
+    procedure InIOCPServer1Connect(Sender: TObject; Socket: TBaseSocket);
+    procedure InIOCPServer1Disconnect(Sender: TObject; Socket: TBaseSocket);
   private
     { Private declarations }
     FAppDir: String;
@@ -869,8 +871,8 @@ begin
   // 更新最大消息号！
   FLastMsgId := Msg.MsgId;
 
-{  AddMessage(mmoClient, 'USER_A 收到客户消息：' +
-             Msg.Msg + ', 来自:' + Msg.UserName);  }
+  AddMessage(mmoClient, 'USER_A 收到客户消息：' +
+             Msg.Msg + ', 来自:' + Msg.UserName);
 
 end;
 
@@ -1231,7 +1233,7 @@ begin
 
   // 2. 从工作路径下载文件
   begin
-    FileName := Params.Socket.Data^.WorkDir + FileName;
+    FileName := Params.Socket.Envir^.WorkDir + FileName;
     InFileManager1.OpenLocalFile(Params.Socket, FileName);
   end;
 end;
@@ -1257,7 +1259,7 @@ procedure TFormTestIOCPServer.InFileManager1DeleteFile(Sender: TObject;
   Params: TReceiveParams; Result: TReturnResult);
 begin
   // 请求删除文件，应在客户端先确认
-  if DeleteFile(Params.Socket.Data^.WorkDir + Params.FileName) then
+  if DeleteFile(Params.Socket.Envir^.WorkDir + Params.FileName) then
     Result.ActResult := arOK
   else
     Result.ActResult := arFail;
@@ -1274,8 +1276,8 @@ procedure TFormTestIOCPServer.InFileManager1RenameFile(Sender: TObject;
   Params: TReceiveParams; Result: TReturnResult);
 begin
   // 改工作目录下的文件名
-  if RenameFile(Params.Socket.Data^.WorkDir + Params.FileName,
-                Params.Socket.Data^.WorkDir + Params.NewFileName) then
+  if RenameFile(Params.Socket.Envir^.WorkDir + Params.FileName,
+                Params.Socket.Envir^.WorkDir + Params.NewFileName) then
     Result.ActResult := arOK
   else
     Result.ActResult := arFail;
@@ -1593,6 +1595,15 @@ begin
   mmoServer.Lines.Clear;  
 end;
 
+procedure TFormTestIOCPServer.InIOCPServer1Connect(Sender: TObject;
+  Socket: TBaseSocket);
+begin
+  // 客户端接入，Socket 即将投放 WSARecv（见 TInIOCPServer.AcceptClient）
+  // Socket.Data 属性由用户扩展，可以存放自定义数据，如：
+  // Socket.Data := TMemoryStream.Create;
+  // 如果禁止接入，可以直接 Socket.Close;
+end;
+
 procedure TFormTestIOCPServer.InIOCPServer1DataReceive(Sender: TBaseSocket;
   const Data: PAnsiChar; Size: Cardinal);
 begin
@@ -1609,6 +1620,24 @@ begin
   // 已在 TWorkThread.IOIncrement 加锁
   //   线程安全：严格来说不要访问主线程的任何控件
 //  AddMessage(mmoServer, '发出数据长度=' + IntToStr(Size) + ' Bytes');
+end;
+
+procedure TFormTestIOCPServer.InIOCPServer1Disconnect(Sender: TObject;
+  Socket: TBaseSocket);
+begin
+  // 客户端即将断开（见 TInIOCPServer.CloseSocket）
+  // 禁止接入时也触发当前事件
+  // Socket.Data 属性是用户扩展的数据，要自己释放或作进一步处理
+
+  // 系统默认的客户端对象是 THttpSocket，
+  // Socket 资源转移给对应协议的 TBaseSocket 后，会被关闭，
+  // 此时要判断一下，如果 Socket.Connected = False 则说明资源已被转移，不用处理
+  // 见 TBaseSocket.Clone。
+
+  // 一般可以这样：
+  // if Socket.Connected and Assigned(Socket.Data) then
+  //   TMemoryStream(Socket.Data).Free;  // 释放 Data 资源
+
 end;
 
 procedure TFormTestIOCPServer.InMessageClient1MsgReceive(Sender: TObject;

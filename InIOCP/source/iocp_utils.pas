@@ -100,10 +100,6 @@ implementation
 uses
   iocp_log, iocp_msgPacks, http_objects, iocp_senders;
 
-var
-  WSAResult: Integer = 9;
-  WSACount:  Integer = 0;
-
 function CreateSocket: TSocket;
 begin
   // 新建一个 Socket(未出现过 INVALID_SOCKET）

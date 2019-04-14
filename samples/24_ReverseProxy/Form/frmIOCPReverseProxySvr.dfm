@@ -2,7 +2,7 @@ object FormInIOCPRecvProxySvr: TFormInIOCPRecvProxySvr
   Left = 0
   Top = 0
   Caption = 'InIOCP-'#21453#21521#20195#29702#26381#21153
-  ClientHeight = 438
+  ClientHeight = 434
   ClientWidth = 670
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -15,7 +15,7 @@ object FormInIOCPRecvProxySvr: TFormInIOCPRecvProxySvr
   Scaled = False
   OnClose = FormClose
   OnCreate = FormCreate
-  PixelsPerInch = 96
+  PixelsPerInch = 120
   TextHeight = 15
   object Label1: TLabel
     Left = 190

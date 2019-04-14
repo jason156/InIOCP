@@ -83,6 +83,8 @@ type
     procedure Button1Click(Sender: TObject);
     procedure InCustomManager1Receive(Sender: TObject; Params: TReceiveParams;
       Result: TReturnResult);
+    procedure InIOCPServer1Connect(Sender: TObject; Socket: TBaseSocket);
+    procedure InIOCPServer1Disconnect(Sender: TObject; Socket: TBaseSocket);
   private
     { Private declarations }
     FAppDir: String;
@@ -379,6 +381,25 @@ begin
   btnStop.Enabled := InIOCPServer1.Active;
   memo1.Lines.Add('IP:' + InIOCPServer1.ServerAddr);
   memo1.Lines.Add('Port:' + IntToStr(InIOCPServer1.ServerPort));
+end;
+
+procedure TFormInIOCPMessageServer.InIOCPServer1Connect(Sender: TObject;
+  Socket: TBaseSocket);
+begin
+  // 使用 Data 属性，扩展一下功能
+  // 如禁止接入可以直接 Socket.Close;
+{  Socket.Data := TInMemStream.Create;   }
+end;
+
+procedure TFormInIOCPMessageServer.InIOCPServer1Disconnect(Sender: TObject;
+  Socket: TBaseSocket);
+begin
+  // 要判断释放 Data 的数据
+  // 系统默认的客户端对象是 THttpSocket，
+  // Socket 资源转换为对应协议的 TBaseSocket 后，会关闭 Socket，
+  // 此时要判断一下，如果 Socket.Connected = False 则是资源转换后的 Socket，不用处理
+{  if Socket.Connected and Assigned(Socket.Data) then
+    TInMemStream(Socket.Data).Free;   }
 end;
 
 procedure TFormInIOCPMessageServer.InMessageClient1ListFiles(Sender: TObject;

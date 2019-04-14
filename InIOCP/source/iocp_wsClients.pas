@@ -102,6 +102,7 @@ type
 
     procedure SetActive(Value: Boolean);
     procedure TimerEvent(Sender: TObject);
+    procedure TryDisconnect;
   protected
     procedure Loaded; override;
   public
@@ -497,6 +498,16 @@ begin
   InternalClose;  // 断开连接
 end;
 
+procedure TInWSConnection.TryDisconnect;
+begin
+  // 服务器关闭时，尝试关闭客户端 
+  if Assigned(FTimer) then
+  begin
+    FTimer.OnTimer := TimerEvent;
+    FTimer.Enabled := True;
+  end;
+end;
+
 { TJSONMessage }
 
 constructor TJSONMessage.Create(AOwner: TWSConnection);
@@ -780,13 +791,9 @@ begin
 
   if (dwError <> 0) or (cbTransferred = 0) then // 断开或异常
   begin
-    // 服务端关闭时要断开连接：2019-02-28
-    if (cbTransferred = 0) and Assigned(Connection.FTimer) then
-      try
-        Connection.FTimer.Enabled := True;
-      except
-       // 空
-      end;
+    // 服务端关闭时 cbTransferred = 0, 要断开连接：2019-02-28
+    if (cbTransferred = 0) then
+      Thread.Synchronize(Connection.TryDisconnect); // 同步
     Exit;
   end;
 

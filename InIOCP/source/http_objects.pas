@@ -66,36 +66,58 @@ type
                                 const FileName: String; Data: PAnsiChar;
                                 DataLength: Integer; State: THttpPostState) of object;
 
+  // 请求事件（Sender 是 Worker）
+  THttpRequestEvent = procedure(Sender: TObject;
+                                Request: THttpRequest;
+                                Respone: THttpRespone) of object;
+
+  // 升级为 WebSocket 的事件
+  TOnUpgradeEvent = procedure(Sender: TObject; const Origin: String;
+                              var Accept: Boolean) of object;
+                                                              
   THttpDataProvider = class(TComponent)
   private
     FSessionMgr: THttpSessionManager;     // 全部 Session 管理
     FMaxContentLength: Integer;           // 请求实体的最大长度
     FKeepAlive: Boolean;                  // 保存连接
+    FPeerIPList: TPreventAttack;          // 客户端 IP 列表
     FPreventAttack: Boolean;              // IP列表（防攻击）
-
-    FOnAccept: TOnAcceptEvent;            // 是否接受请求
-    FOnInvalidSession: TOnInvalidSession; // Session 无效
-    FOnReceiveFile: TOnReceiveFile;       // 接收文件事件
-
     function CheckSessionState(Request: THttpRequest; Respone: THttpRespone;
                                const PeerInfo: AnsiString): Boolean;
     procedure SetMaxContentLength(const Value: Integer);
     procedure SetPreventAttack(const Value: Boolean);
+  protected
+    FServer: TObject;                     // TInIOCPServer 服务器
+    FOnAccept: TOnAcceptEvent;            // 是否接受请求
+    FOnDelete: THttpRequestEvent;         // 请求：Delete
+    FOnGet: THttpRequestEvent;            // 请求：Get
+    FOnInvalidSession: TOnInvalidSession; // Session 无效事件
+    FOnPost: THttpRequestEvent;           // 请求：Post
+    FOnPut: THttpRequestEvent;            // 请求：Put
+    FOnOptions: THttpRequestEvent;        // 请求：Options
+    FOnReceiveFile: TOnReceiveFile;       // 接收文件事件
+    FOnTrace: THttpRequestEvent;          // 请求：Trace
+    FOnUpgrade: TOnUpgradeEvent;          // 升级为 WebSocket 事件
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure ClearIPList;
-    class procedure SetDataProvider(ADataProvider: THttpDataProvider);
   public
     property SessionMgr: THttpSessionManager read FSessionMgr;
   published
-    property KeepAlive: Boolean read FKeepAlive write FKeepAlive;
+    property KeepAlive: Boolean read FKeepAlive write FKeepAlive default True;
     property MaxContentLength: Integer read FMaxContentLength write SetMaxContentLength default MAX_CONTENT_LENGTH;
     property PreventAttack: Boolean read FPreventAttack write SetPreventAttack default False;
   published
     property OnAccept: TOnAcceptEvent read FOnAccept write FOnAccept;
+    property OnDelete: THttpRequestEvent read FOnDelete write FOnDelete;
+    property OnGet: THttpRequestEvent read FOnGet write FOnGet;
     property OnInvalidSession: TOnInvalidSession read FOnInvalidSession write FOnInvalidSession;
+    property OnPost: THttpRequestEvent read FOnPost write FOnPost;
+    property OnPut: THttpRequestEvent read FOnPut write FOnPut;
+    property OnOptions: THttpRequestEvent read FOnOptions write FOnOptions;
     property OnReceiveFile: TOnReceiveFile read FOnReceiveFile write FOnReceiveFile;
+    property OnTrace: THttpRequestEvent read FOnTrace write FOnTrace;
   end;
 
   // ================ 客户端表单字段/参数 类 ================
@@ -142,6 +164,7 @@ type
 
   THttpBase = class(TObject)
   private
+    FDataProvider: THttpDataProvider;  // HTTP 支持
     FOwner: TObject;             // THttpSocket 对象
     FContentSize: Integer;       // 实体长度
     FFileName: AnsiString;       // 收到、发送到的文件名
@@ -153,7 +176,7 @@ type
     FExtParams: THttpHeaderParams;  // 请求 Headers 的额外参数/变量表
     FStatusCode: Integer;        // 状态代码
   public
-    constructor Create(AOwner: TObject);
+    constructor Create(ADataProvider: THttpDataProvider; AOwner: TObject);
     procedure Clear; virtual;
   public
     property HasSession: Boolean read GetHasSession;
@@ -199,7 +222,7 @@ type
   protected
     procedure Decode(Sender: TBaseTaskSender; Respone: THttpRespone; Data: PPerIOData);
   public
-    constructor Create(AOwner: TObject);
+    constructor Create(ADataProvider: THttpDataProvider; AOwner: TObject);
     destructor Destroy; override;
     procedure Clear; override;
   public
@@ -279,7 +302,7 @@ type
     procedure SendWork;
     procedure Upgrade;    
   public
-    constructor Create(AOwner: TObject);
+    constructor Create(ADataProvider: THttpDataProvider; AOwner: TObject);
     destructor Destroy; override;
 
     // 清空资源
@@ -325,13 +348,8 @@ uses
   iocp_server, iocp_managers, iocp_sockets, iocp_zlib;
 
 type
-  TTaskSocket = class(TBaseSocket);
+  TBaseSocketRef = class(TBaseSocket);
 
-var
-    FPeerIPList: TPreventAttack = nil;  // 客户端 IP 列表
-  FDataProvider: THttpDataProvider = nil;  // Http 数据提供
-  FWebSocketMgr: TInWebSocketManager = nil;  // WebSocket 管理
-   
 { THttpSession }
 
 function THttpSession.CheckAttack: Boolean;
@@ -553,13 +571,6 @@ begin
   inherited;
 end;
 
-class procedure THttpDataProvider.SetDataProvider(ADataProvider: THttpDataProvider);
-begin
-  FDataProvider := ADataProvider;
-  if Assigned(ADataProvider) then
-    FWebSocketMgr := TInHttpDataProvider(ADataProvider).WebSocketManager;
-end;
-
 procedure THttpDataProvider.SetMaxContentLength(const Value: Integer);
 begin
   if (Value <= 0) then
@@ -643,9 +654,10 @@ begin
   FStatusCode := 200;      // 默认       
 end;
 
-constructor THttpBase.Create(AOwner: TObject);
+constructor THttpBase.Create(ADataProvider: THttpDataProvider; AOwner: TObject);
 begin
   inherited Create;
+  FDataProvider := ADataProvider;  // HTTP 支持
   FOwner := AOwner;  // THttpSocket 对象
 end;
 
@@ -680,7 +692,7 @@ begin
   FStream.Clear;
 end;
 
-constructor THttpRequest.Create(AOwner: TObject);
+constructor THttpRequest.Create(ADataProvider: THttpDataProvider; AOwner: TObject);
 begin
   inherited;
   FExtParams := THttpHeaderParams.Create(Self);
@@ -737,10 +749,10 @@ begin
       end;
 
       // 检查是否要升级为 WebSocket, 15=8+4+2+1
-      if FAccepted and Assigned(FWebSocketMgr) and
-        (FUpgradeState = 15) and Assigned(FWebSocketMgr.OnUpgrade) then
+      if FAccepted and (FUpgradeState = 15) and
+         Assigned(FDataProvider.FOnUpgrade) then
       begin
-        FWebSocketMgr.OnUpgrade(Self, FHeadersAry[rqhOrigin], FAccepted);
+        FDataProvider.FOnUpgrade(Self, FHeadersAry[rqhOrigin], FAccepted);
         {$IFDEF DEBUG_MODE}
         if (FAccepted = False) then  // 升级为 WebSocket
           iocp_log.WriteLog(THttpSocket(FOwner).PeerIPPort + '->拒绝请求升级为 WebSocket.');
@@ -1247,8 +1259,8 @@ begin
         end else
         begin
           // 10 秒内同一 IP 出现 3 个 >= 10M 的请求，当作恶意
-          if (i >= 10240000) and Assigned(FPeerIPList) then
-            FAttacked := FPeerIPList.CheckAttack(THttpSocket(FOwner).PeerIP, 10000, 3)
+          if (i >= 10240000) and Assigned(FDataProvider.FPeerIPList) then
+            FAttacked := FDataProvider.FPeerIPList.CheckAttack(THttpSocket(FOwner).PeerIP, 10000, 3)
           else
             FAttacked := False;
 
@@ -1765,7 +1777,7 @@ begin
   FWorkDone := False;
 end;
 
-constructor THttpRespone.Create(AOwner: TObject);
+constructor THttpRespone.Create(ADataProvider: THttpDataProvider; AOwner: TObject);
 begin
   inherited;
   FContent := TInStringList.Create;   // 消息内容
@@ -1863,7 +1875,7 @@ procedure THttpRespone.SendWork;
     // 1. 用 TransmitFile 发送
     //    发送完成或异常都在 THttpSocket.ClearResources 中
     //    释放资源 FHandle 和 FStream
-    with TTaskSocket(FOwner) do
+    with TBaseSocketRef(FOwner) do
       if (FHandle > 0) then  // 文件句柄 Handle
         FTask.SetTask(FHandle, FContentSize)
       else
@@ -1929,7 +1941,7 @@ begin
   {$ENDIF}
 
   {$IFDEF TRANSMIT_FILE}
-  TTaskSocket(FOwner).InterTransmit;
+  TBaseSocketRef(FOwner).InterTransmit;
   {$ELSE}
   FHandle := 0;    // 已经发出
   FStream := nil;  // 已经发出

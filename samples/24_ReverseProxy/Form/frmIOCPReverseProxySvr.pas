@@ -103,10 +103,10 @@ begin
 
     InIOCPBroker1.BrokerId := ReadString('ReverseOptions', 'BrokerId', '·Ö¹«Ë¾A');
     InIOCPBroker1.InnerServer.ServerAddr := ReadString('ReverseOptions', 'InnerServerAddr', '127.0.0.1');
-    InIOCPBroker1.InnerServer.ServerPort := ReadInteger('ReverseOptions', 'InnerServerPort', 1200);
+    InIOCPBroker1.InnerServer.ServerPort := ReadInteger('ReverseOptions', 'InnerServerPort', 3060);
 
     InIOCPBroker1.OuterServer.ServerAddr := ReadString('OuterOptions', 'LocalHost', '127.0.0.1');
-    InIOCPBroker1.OuterServer.ServerPort := ReadInteger('OuterOptions', 'LocalPort', 80);
+    InIOCPBroker1.OuterServer.ServerPort := ReadInteger('OuterOptions', 'LocalPort', 900);
 
     Free;
   end;  

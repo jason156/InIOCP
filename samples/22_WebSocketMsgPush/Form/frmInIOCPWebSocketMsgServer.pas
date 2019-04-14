@@ -72,7 +72,7 @@ end;
 
 procedure TFormInIOCPWsJSONMsgServer.InIOCPServer1AfterOpen(Sender: TObject);
 begin
-  Memo1.Lines.Clear;
+//  Memo1.Lines.Clear;
   Memo1.Lines.Add('IP:' + InIOCPServer1.ServerAddr);
   Memo1.Lines.Add('Port:' + IntToStr(InIOCPServer1.ServerPort));  
 end;

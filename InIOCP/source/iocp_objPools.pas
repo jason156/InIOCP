@@ -9,7 +9,7 @@ interface
 
 uses
   Windows, Classes, SysUtils,
-  iocp_api, iocp_base, iocp_lists,
+  iocp_api, iocp_base, iocp_lists, iocp_utils,
   iocp_baseObjs;
 
 type
@@ -149,11 +149,24 @@ type
     property Count: Integer read FCount;
   end;
 
+  // ================== 防攻击 管理 ==================
+
+  TPreventAttack = class(TStringHash)
+  protected
+    procedure FreeItemData(Item: PHashItem); override;
+  public
+    function CheckAttack(const PeerIP: String; MSecond, InterCount: Integer): Boolean;
+    procedure DecRef(const PeerIP: String);
+  end;
+  
 implementation
 
 uses
   iocp_sockets;
 
+type
+  TBaseSocketRef = class(TBaseSocket);
+  
 { TObjectPool }
 
 function TObjectPool.AddNode: PLinkRec;
@@ -572,7 +585,7 @@ end;
 
 function TIOCPSocketPool.Clone(Source: TObject): TObject;
 var
- Socket: TBaseSocket;
+ Socket: TBaseSocketRef;
 begin
   // 复制一个 TBaseSocket
   FLock.Acquire;
@@ -881,6 +894,74 @@ begin
     Result := P^.Value
   else
     Result := Nil;
+end;
+
+{ TPreventAttack }
+
+function TPreventAttack.CheckAttack(const PeerIP: String; MSecond, InterCount: Integer): Boolean;
+var
+  Item: PAttackInfo;
+  TickCount: Int64;
+begin
+  // 检查恶意攻击
+  //   正常的客户端连接数不多，也不频繁
+  TickCount := GetUTCTickCount;
+  Lock;
+  try
+    Item := Self.ValueOf2(PeerIP);
+    if Assigned(Item) then
+    begin
+      // MSecond 毫秒内出现 InterCount 个客户端连接，
+      // 当作攻击, 15 分钟内禁止连接
+      if (Item^.TickCount > TickCount) then  // 攻击过，未解禁
+        Result := True
+      else begin
+        Result := (Item^.Count >= InterCount) and
+                  (TickCount - Item^.TickCount <= MSecond);
+        if Result then  // 是攻击
+          Item^.TickCount := TickCount + 900000  // 900 秒
+        else
+          Item^.TickCount := TickCount;
+        Inc(Item^.Count);
+      end;
+    end else
+    begin
+      // 未重复连接过，登记
+      Item := New(PAttackInfo);
+      Item^.PeerIP := PeerIP;
+      Item^.TickCount := TickCount;
+      Item^.Count := 1;
+
+      // 加入 Hash 表
+      Self.Add(PeerIP, Item);
+
+      Result := False;
+    end;
+  finally
+    UnLock;
+  end;
+
+end;
+
+procedure TPreventAttack.DecRef(const PeerIP: String);
+var
+  Item: PAttackInfo;
+begin
+  // 减少 IP 引用次数
+  Lock;
+  try
+    Item := Self.ValueOf2(PeerIP);
+    if Assigned(Item) and (Item^.Count > 0) then
+      Dec(Item^.Count);
+  finally
+    UnLock;
+  end;
+end;
+
+procedure TPreventAttack.FreeItemData(Item: PHashItem);
+begin
+  // 释放节点空间
+  Dispose(PAttackInfo(Item^.Value));
 end;
 
 end.

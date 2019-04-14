@@ -15,7 +15,7 @@ object FormInIOCPProxySvr: TFormInIOCPProxySvr
   Scaled = False
   OnClose = FormClose
   OnCreate = FormCreate
-  PixelsPerInch = 96
+  PixelsPerInch = 120
   TextHeight = 15
   object Label1: TLabel
     Left = 167

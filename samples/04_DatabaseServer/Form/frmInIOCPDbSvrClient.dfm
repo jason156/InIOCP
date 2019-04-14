@@ -14,7 +14,7 @@ object FormInIOCPDbSvrClient: TFormInIOCPDbSvrClient
   Position = poDesktopCenter
   Scaled = False
   OnCreate = FormCreate
-  PixelsPerInch = 96
+  PixelsPerInch = 120
   TextHeight = 13
   object Image1: TImage
     Left = 481

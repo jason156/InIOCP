@@ -41,7 +41,7 @@ uses
 
 procedure TFormInIOCPStreamServer.btnStartClick(Sender: TObject);
 begin
-  Memo1.Lines.Clear;
+//  Memo1.Lines.Clear;
   iocp_log.TLogThread.InitLog;              // 开启日志
   InIOCPServer1.ServerAddr := Edit1.Text;     // 地址
   InIOCPServer1.Active := True;               // 开启服务
@@ -104,7 +104,7 @@ begin
   TStreamSocket(Sender).SendData(Stream);   // 自动释放 Stream  }
 
   // 4. 直接打开文件发送 Handle(共享读)
-  TStreamSocket(Sender).SendData(InternalOpenFile('stream.htm'));
+  TStreamSocket(Sender).SendData(InternalOpenFile('retrun_stream.txt'));
 
   // 5. 发送一个 Variant
 //  TStreamSocket(Sender).SendDataVar(Value);  

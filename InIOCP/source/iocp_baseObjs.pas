@@ -9,7 +9,7 @@ interface
 
 uses
   Windows, Classes, SysUtils, ActiveX,
-  iocp_log;
+  iocp_base, iocp_log;
 
 type
 
@@ -48,6 +48,20 @@ type
     destructor Destroy; override;
     procedure Activate; {$IFDEF USE_INLINE} inline; {$ENDIF}
     procedure Stop;
+  end;
+
+  // ===================== 系统全局锁 =====================
+
+  TSystemGlobalLock = class(TThreadLock)
+  private
+    class var
+    FMessageId: TIOCPMsgId;        // 消息编号
+    FInstance: TSystemGlobalLock;  // 当前实例
+    FRefCount: Integer;            // 引用次数
+  public
+    class function CreateGlobalLock: TSystemGlobalLock;
+    class function GetMsgId: TIOCPMsgId;
+    class procedure FreeGlobalLock;    
   end;
 
 implementation
@@ -134,6 +148,45 @@ procedure TCycleThread.Stop;
 begin
   Terminate;
   Activate;
+end;
+
+{ TSystemGlobalLock }
+
+class function TSystemGlobalLock.CreateGlobalLock: TSystemGlobalLock;
+begin
+  if not Assigned(FInstance) then
+    FInstance := TSystemGlobalLock.Create;
+  Result := FInstance;
+  Inc(FRefCount);
+end;
+
+class procedure TSystemGlobalLock.FreeGlobalLock;
+begin
+  Dec(FRefCount);
+  if (FRefCount = 0) then
+  begin
+    FInstance.Free;
+    FInstance := nil;
+  end;
+end;
+
+class function TSystemGlobalLock.GetMsgId: TIOCPMsgId;
+begin
+  if Assigned(FInstance) then
+  begin
+    {$IFDEF WIN64}
+    Result := System.AtomicIncrement(FMessageId);
+    {$ELSE}
+    FInstance.Acquire;
+    try
+      Inc(FMessageId);
+      Result := FMessageId;
+    finally
+      FInstance.Release;
+    end;
+    {$ENDIF}
+  end else
+    Result := 0;
 end;
 
 end.

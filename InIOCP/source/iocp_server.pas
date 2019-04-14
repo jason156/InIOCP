@@ -22,7 +22,6 @@ type
 
   TWorkThread     = class;    // 工作线程
   TWorkThreadPool = class;    // 工作线程池
-  TPreventAttack  = class;    // 防攻击管理
   TTimeoutThread  = class;    // 超时检查线程
 
   // ================== IOCP 引擎 ==================
@@ -120,6 +119,7 @@ type
   
   // ================== TInIOCPServer 服务器 类 ==================
 
+  TOnConnectEvnet   = procedure(Sender: TObject; Socket: TBaseSocket) of object;
   TOnStreamInEvent  = procedure(Sender: TBaseSocket; const Data: PAnsiChar; Size: Cardinal) of object;
   TOnStreamOutEvent = procedure(Sender: TBaseSocket; Size: Cardinal) of object;
   TOnErrorEvent     = procedure(Sender: TObject; const Error: Exception) of object;
@@ -160,7 +160,7 @@ type
     FSessionMgr: THttpSessionManager;    // Http 的会话管理（引用）
     FStartParams: TServerParams;         // 启动参数属性组
     FState: Integer;                     // 状态
-    FStreamServer: Boolean;              // 当作流服务模式
+    FStreamMode: Boolean;                // 当作流服务模式
     FTimeOut: Cardinal;                  // 超时间隔（0时不检查）
     FTimeoutChecking: Boolean;           // 关闭线程工作状态
     
@@ -186,8 +186,10 @@ type
     FBeforeClose: TNotifyEvent;          // 停止前事件
     FAfterClose: TNotifyEvent;           // 停止后事件
 
+    FOnConnect: TOnConnectEvnet;         // 接入事件
     FOnDataReceive: TOnStreamInEvent;    // 收到数据
     FOnDataSend: TOnStreamOutEvent;      // 发出数据
+    FOnDisconnect: TOnConnectEvnet;      // 断开事件    
     FOnError: TOnErrorEvent;             // 异常事件
 
     // 客户端接入
@@ -235,7 +237,7 @@ type
     property MaxIOTraffic: Integer read FMaxIOTraffic;    
     property PushManager: TPushMsgManager read FPushManager;
     property PushThreadCount: Integer read FPushThreadCount;
-    property StreamServer: Boolean read FStreamServer;
+    property StreamMode: Boolean read FStreamMode;
     property TimeOut: Cardinal read FTimeOut;
     property WorkThreadCount: Integer read FWorkThreadCount;
   public
@@ -261,8 +263,10 @@ type
     property ThreadOptions: TThreadOptions read FThreadOptions write FThreadOptions;
   published
     // 事件
+    property OnConnect: TOnConnectEvnet read FOnConnect write FOnConnect;
     property OnDataReceive: TOnStreamInEvent read FOnDataReceive write FOnDataReceive;
     property OnDataSend: TOnStreamOutEvent read FOnDataSend write FOnDataSend;
+    property OnDisconnect: TOnConnectEvnet read FOnDisconnect write FOnDisconnect;
     property OnError: TOnErrorEvent read FOnError write FOnError;
   published
     property BeforeOpen: TNotifyEvent read FBeforeClose write FBeforeClose;
@@ -331,16 +335,6 @@ type
     procedure StopThreads;
   end;
 
-  // ================== 防攻击 管理 ==================
-
-  TPreventAttack = class(TStringHash)
-  protected
-    procedure FreeItemData(Item: PHashItem); override;
-  public
-    function CheckAttack(const PeerIP: String; MSecond, InterCount: Integer): Boolean;
-    procedure DecRef(const PeerIP: String);
-  end;
-
   // ===================== 超时检查线程 =====================
 
   TTimeoutThread = class(TBaseThread)
@@ -365,6 +359,11 @@ implementation
 
 uses                          
   iocp_utils;
+
+type
+  TBaseSocketRef = class(TBaseSocket);
+  TBaseManagerRef = class(TBaseManager);
+  THttpDataProviderRef = class(TInHttpDataProvider);
 
 procedure __ResetMMProc(Lock: TThreadLock);
 begin
@@ -588,7 +587,11 @@ begin
     FOwner.FClientMgr.RemoveFreeNotification(FOwner);  // 取消通知消息
   FOwner.FClientMgr := Value;
   if Assigned(FOwner.FClientMgr) then
-    FOwner.FClientMgr.FreeNotification(FOwner);        // 设计时通知消息
+  begin
+    FOwner.FClientMgr.FreeNotification(FOwner);  // 设计时通知消息
+    TBaseManagerRef(FOwner.FClientMgr).FServer := FOwner;
+    FOwner.IOCPBroker := nil;
+  end;
 end;
 
 procedure TIOCPManagers.SetCustomMgr(const Value: TInCustomManager);
@@ -597,7 +600,11 @@ begin
     FOwner.FCustomMgr.RemoveFreeNotification(FOwner);
   FOwner.FCustomMgr := Value;
   if Assigned(FOwner.FCustomMgr) then
+  begin
     FOwner.FCustomMgr.FreeNotification(FOwner);
+    TBaseManagerRef(FOwner.FCustomMgr).FServer := FOwner;
+    FOwner.IOCPBroker := nil;
+  end;
 end;
 
 procedure TIOCPManagers.SetDatabaseMgr(const Value: TInDatabaseManager);
@@ -606,7 +613,11 @@ begin
     FOwner.FDatabaseMgr.RemoveFreeNotification(FOwner);
   FOwner.FDatabaseMgr := Value;
   if Assigned(FOwner.FDatabaseMgr) then
+  begin
     FOwner.FDatabaseMgr.FreeNotification(FOwner);
+    TBaseManagerRef(FOwner.FDatabaseMgr).FServer := FOwner;
+    FOwner.IOCPBroker := nil;
+  end;
 end;
 
 procedure TIOCPManagers.SetFileMgr(const Value: TInFileManager);
@@ -615,7 +626,11 @@ begin
     FOwner.FFileMgr.RemoveFreeNotification(FOwner);
   FOwner.FFileMgr := Value;
   if Assigned(FOwner.FFileMgr) then
+  begin
     FOwner.FFileMgr.FreeNotification(FOwner);
+    TBaseManagerRef(FOwner.FFileMgr).FServer := FOwner;
+    FOwner.IOCPBroker := nil;
+  end;
 end;
 
 procedure TIOCPManagers.SetMessageMgr(const Value: TInMessageManager);
@@ -624,7 +639,11 @@ begin
     FOwner.FMessageMgr.RemoveFreeNotification(FOwner);
   FOwner.FMessageMgr := Value;
   if Assigned(FOwner.FMessageMgr) then
+  begin
     FOwner.FMessageMgr.FreeNotification(FOwner);
+    TBaseManagerRef(FOwner.FMessageMgr).FServer := FOwner;
+    FOwner.IOCPBroker := nil;
+  end;
 end;
 
 { TInIOCPServer }
@@ -632,7 +651,7 @@ end;
 procedure TInIOCPServer.AcceptClient(Socket: TSocket; AddrIn: PSockAddrIn);
 var
   PeerIP: String;
-  ASocket: TBaseSocket;
+  ASocket: TBaseSocketRef;
   SocketPool: TIOCPSocketPool;
 begin
   // 客户端接入，接受请求
@@ -649,20 +668,20 @@ begin
   end;
 
   // 准备、设置 Socket（默认为 THttpSocket）
-  if FStreamServer then  // 纯粹的数据流服务
+  if FStreamMode then  // 纯粹的数据流服务
     SocketPool := FSocketPool
   else
     SocketPool := FHttpSocketPool;
 
-  ASocket := TBaseSocket(SocketPool.Pop^.Data);
+  ASocket := TBaseSocketRef(SocketPool.Pop^.Data);
   if (Assigned(ASocket) = False) then  // 除非内存耗尽
   begin
     iocp_log.WriteLog('TInIOCPServer.AcceptClient->可能内存不足.');
     Exit;
   end;
-    
-  ASocket.Socket := Socket;      // 绑定 Socket
-  ASocket.SetPeerAddr(AddrIn);   // 设置地址
+
+  ASocket.IniSocket(Self, Socket);  // 绑定 Server、Socket
+  ASocket.SetPeerAddr(AddrIn);  // 设置地址
 
   // 注：改为在此绑定 IOCP
   FIOCPEngine.BindIoCompletionPort(Socket);
@@ -674,12 +693,27 @@ begin
   then
     ASocket.PostEvent(ioRefuse) // 拒绝服务
   else begin
-    {$IFDEF DEBUG_MODE}
-    iocp_log.WriteLog('TInIOCPServer.AcceptClient->客户端接入：' + ASocket.PeerIPPort);
-    {$ENDIF}
-    if (FTimeOut = 0) then  // 不用超时检查，加心跳
+    // 不用超时检查，加心跳
+    if (FTimeOut = 0) then
       iocp_wsExt.SetKeepAlive(Socket);
-    ASocket.PostRecv;  // 投放接收内存块
+
+    // 调用客户端接入事件，如果要禁止接入，可以 Close
+    if Assigned(FOnConnect) then
+      FOnConnect(Self, ASocket);
+
+    if ASocket.Connected then  // 允许接入
+    begin
+      ASocket.PostRecv;        // 投放接收内存块
+      {$IFDEF DEBUG_MODE}
+      iocp_log.WriteLog('TInIOCPServer.AcceptClient->客户端接入：' + ASocket.PeerIPPort);
+      {$ENDIF}
+    end else
+    begin
+      CloseSocket(ASocket);    // 回收Socket
+      {$IFDEF DEBUG_MODE}
+      iocp_log.WriteLog('TInIOCPServer.AcceptClient->禁止客户端接入：' + ASocket.PeerIPPort);
+      {$ENDIF}
+    end;
   end;
 
 end;
@@ -758,6 +792,8 @@ begin
       FPeerIPList.DecRef(ASocket.PeerIP);
     if Assigned(FSessionMgr) and (ASocket is THttpSocket) then
       FSessionMgr.DecRef(THttpSocket(ASocket).SessionId);
+    if Assigned(FOnDisconnect) then  // 客户端断开事件
+      FOnDisconnect(Self, ASocket);      
     FCloseThread.AddSocket(ASocket);
   end;
 end;
@@ -903,11 +939,11 @@ procedure TInIOCPServer.InitExtraResources;
 begin
   // 检查调整服务类型
   if Assigned(FIOCPBroker) then
-    FStreamServer := True  // 当作是流服务
+    FStreamMode := True  // 当作是流服务
   else
-    FStreamServer := not (Assigned(FClientMgr)   or Assigned(FCustomMgr) or
-                          Assigned(FDatabaseMgr) or Assigned(FFileMgr)   or
-                          Assigned(FMessageMgr)  or Assigned(FHttpDataProvider));
+    FStreamMode := not (Assigned(FClientMgr)   or Assigned(FCustomMgr) or
+                        Assigned(FDatabaseMgr) or Assigned(FFileMgr)   or
+                        Assigned(FMessageMgr)  or Assigned(FHttpDataProvider));
   // 建消息书写器
   if Assigned(FMessageMgr) then
     FMessageMgr.CreateMsgWriter(Assigned(FHttpDataProvider));
@@ -941,11 +977,11 @@ begin
     {$ENDIF}
   end;
 
-  if Assigned(FBusiWorkMgr) then  // 等待业务线程执行完毕
-    FBusiWorkMgr.WaitFor;
-
   if Assigned(FPushManager) then  // 等待推送线程执行完毕
     FPushManager.WaitFor;
+
+  if Assigned(FBusiWorkMgr) then  // 等待业务线程执行完毕
+    FBusiWorkMgr.WaitFor;
 
   if Assigned(FCloseThread) then  // 等待 Socket 关闭完毕
     FCloseThread.WaitFor;
@@ -1052,9 +1088,10 @@ begin
   end;
 
   // 最后释放 FGlobalLock（在 ClearBalanceServers 后）
-  if Assigned(FGlobalLock) then
+  if Assigned(FGlobalLock) then  // TSystemGlobalLock
   begin
-    FreeAndNil(FGlobalLock);
+    TSystemGlobalLock.FreeGlobalLock;
+    FGlobalLock := nil;
     {$IFDEF DEBUG_MODE}
     iocp_log.WriteLog('TInIOCPServer.InternalClose->FGlobalLock（全局锁）释放成功。');
     {$ENDIF}
@@ -1116,7 +1153,7 @@ begin
   FState := SERVER_IGNORED;
 
   // 开始当作流服务器，在 InitMoreResource 中会调整
-  FStreamServer := True;  
+  FStreamMode := True;  
 
   // 调整繁忙拒绝、客户端池（允许不开连接池）
   if FBusyRefuseService and (FClientPoolSize = 0) then
@@ -1126,7 +1163,7 @@ begin
     FBusyRefuseService := False;
 
   // 全局锁,（在 InitMoreResource 之前）
-  FGlobalLock := TThreadLock.Create;
+  FGlobalLock := TSystemGlobalLock.CreateGlobalLock;  // TThreadLock.Create;
 
   {$IFDEF DEBUG_MODE}
   iocp_log.WriteLog('TInIOCPServer.OpenDetails->FGlobalLock（全局锁）创建成功。');
@@ -1154,7 +1191,7 @@ begin
   if Assigned(FIOCPBroker) then  // 代理模式（特殊的流）
     FSocketPool := TIOCPSocketPool.Create(otBroker, FClientPoolSize)
   else
-  if FStreamServer then  // 用 TStreamSocket
+  if FStreamMode then  // 用 TStreamSocket
     FSocketPool := TIOCPSocketPool.Create(otStreamSocket, FClientPoolSize)
   else begin  // 用 TIOCPSocket + THttpSocket
     FSocketPool := TIOCPSocketPool.Create(otSocket, FClientPoolSize);
@@ -1186,21 +1223,21 @@ begin
   iocp_log.WriteLog('TInIOCPServer.OpenDetails->FWorkThreadPool（工作线程池）创建成功。');
   {$ENDIF}
 
-  // 在推送线程调度（在 FBusiWorkMgr 前）
-  if (FStreamServer = False) then
-  begin
-    FPushManager := TPushMsgManager.Create(FPushThreadCount, FMaxPushCount);
-    {$IFDEF DEBUG_MODE}
-    iocp_log.WriteLog('TInIOCPServer.OpenDetails->FPushManager（推送线程管理）创建成功。');
-    {$ENDIF}
-  end;
-
   // 业务线程调度管理
   FBusiWorkMgr := TBusiWorkManager.Create(Self, FBusiThreadCount);
 
   {$IFDEF DEBUG_MODE}
   iocp_log.WriteLog('TInIOCPServer.OpenDetails->FBusiThreadMgr（业务线程管理）创建成功。');
   {$ENDIF}
+
+  // 在推送线程调度（在 FBusiWorkMgr 后）
+  if (FStreamMode = False) then
+  begin
+    FPushManager := TPushMsgManager.Create(FBusiWorkMgr, FPushThreadCount, FMaxPushCount);
+    {$IFDEF DEBUG_MODE}
+    iocp_log.WriteLog('TInIOCPServer.OpenDetails->FPushManager（推送线程管理）创建成功。');
+    {$ENDIF}
+  end;
 
   // 关闭 Socket 的线程
   FCloseThread := TCloseSocketThread.Create;
@@ -1348,8 +1385,10 @@ begin
   FHttpDataProvider := Value;
   if Assigned(FHttpDataProvider) then
   begin
-    FSessionMgr := FHttpDataProvider.SessionMgr;
     FHttpDataProvider.FreeNotification(Self);
+    THttpDataProviderRef(FHttpDataProvider).FServer := Self;
+    FSessionMgr := FHttpDataProvider.SessionMgr;
+    IOCPBroker := nil;
   end else
     FSessionMgr := Nil;
 end;
@@ -1363,12 +1402,13 @@ begin
   if Assigned(FIOCPBroker) then
   begin
     FIOCPBroker.FreeNotification(Self);
+    TBaseManagerRef(FIOCPBroker).FServer := Self;
     FIOCPManagers.ClientManager := nil;
     FIOCPManagers.CustomManager := nil;
     FIOCPManagers.DatabaseManager := nil;
     FIOCPManagers.FileManager := nil;
     FIOCPManagers.MessageManager := nil;
-    FHttpDataProvider := nil;
+    HttpDataProvider := nil;
   end;
 end;
 
@@ -1480,7 +1520,7 @@ begin
   if (FPerIOData^.IOType in [ioAccept, ioReceive]) then
   begin
     // 不在此处理收到原始数据流，见：TStreamSocket.ExecuteWork
-    if (FServer.FStreamServer = False) and Assigned(FServer.FOnDataReceive) then
+    if (FServer.FStreamMode = False) and Assigned(FServer.FOnDataReceive) then
       FServer.FOnDataReceive(FSocket, FPerIOData^.Data.buf, FByteCount);
   end else
   if Assigned(FServer.FOnDataSend) then  // 发出数据事件
@@ -1749,74 +1789,6 @@ begin
 
   // 在后
   SetLength(FThreadAarry, 0);
-end;
-
-{ TPreventAttack }
-
-function TPreventAttack.CheckAttack(const PeerIP: String; MSecond, InterCount: Integer): Boolean;
-var
-  Item: PAttackInfo;
-  TickCount: Int64;
-begin
-  // 检查恶意攻击
-  //   正常的客户端连接数不多，也不频繁
-  TickCount := GetUTCTickCount;
-  Lock;
-  try
-    Item := Self.ValueOf2(PeerIP);
-    if Assigned(Item) then
-    begin
-      // MSecond 毫秒内出现 InterCount 个客户端连接，
-      // 当作攻击, 15 分钟内禁止连接
-      if (Item^.TickCount > TickCount) then  // 攻击过，未解禁
-        Result := True
-      else begin
-        Result := (Item^.Count >= InterCount) and
-                  (TickCount - Item^.TickCount <= MSecond);
-        if Result then  // 是攻击
-          Item^.TickCount := TickCount + 900000  // 900 秒
-        else
-          Item^.TickCount := TickCount;
-        Inc(Item^.Count);
-      end;
-    end else
-    begin
-      // 未重复连接过，登记
-      Item := New(PAttackInfo);
-      Item^.PeerIP := PeerIP;
-      Item^.TickCount := TickCount;
-      Item^.Count := 1;
-
-      // 加入 Hash 表
-      Self.Add(PeerIP, Item);
-
-      Result := False;
-    end;
-  finally
-    UnLock;
-  end;
-
-end;
-
-procedure TPreventAttack.DecRef(const PeerIP: String);
-var
-  Item: PAttackInfo;
-begin
-  // 减少 IP 引用次数
-  Lock;
-  try
-    Item := Self.ValueOf2(PeerIP);
-    if Assigned(Item) and (Item^.Count > 0) then
-      Dec(Item^.Count);
-  finally
-    UnLock;
-  end;
-end;
-
-procedure TPreventAttack.FreeItemData(Item: PHashItem);
-begin
-  // 释放节点空间
-  Dispose(PAttackInfo(Item^.Value));
 end;
 
 { TTimeoutThread }

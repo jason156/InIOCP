@@ -106,6 +106,7 @@ type
     procedure SetActive(Value: Boolean);
     procedure SetMaxChunkSize(Value: Integer);
     procedure TimerEvent(Sender: TObject);
+    procedure TryDisconnect;
   protected
     procedure Loaded; override;
   public
@@ -425,7 +426,7 @@ type
     FBlockSemaphore: THandle;   // 阻塞模式的等待信号灯
 
     FGetFeedback: Integer;      // 收到服务器反馈
-    FWaitState: Integer;        // 等待中
+    FWaitState: Integer;        // 等待反馈状态
     FWaitSemaphore: THandle;    // 等待服务器反馈的信号灯
 
     function GetCount: Integer;
@@ -440,7 +441,6 @@ type
     procedure KeepWaiting;
     procedure IniWaitState;
     procedure OnSendError(Sender: TObject);
-    procedure SendMessage;
     procedure ServerReturn(ACancel: Boolean = False);
     procedure WaitForFeedback;
   protected
@@ -840,6 +840,16 @@ begin
   InternalClose;  // 断开连接
 end;
 
+procedure TInConnection.TryDisconnect;
+begin
+  // 服务器关闭时，尝试关闭客户端 
+  if Assigned(FTimer) then
+  begin
+    FTimer.OnTimer := TimerEvent;
+    FTimer.Enabled := True;
+  end;
+end;
+
 { TResultParams }
 
 procedure TResultParams.CreateAttachment(const LocalPath: String);
@@ -919,6 +929,7 @@ begin
 
   // ASender.Socket 已经设置
   ASender.Owner := Self;  // 宿主
+  FSessionId := FConnection.FSessionId; // 登录凭证
 
   try
     // 1. 准备数据流
@@ -1978,7 +1989,6 @@ begin
 
   FSender.AfterSend := AfterSend;  // 发出事件
   FSender.OnError := OnSendError;  // 发出异常事件
-
 end;
 
 function TSendThread.CancelWork(MsgId: TIOCPMsgId): Boolean;
@@ -2071,10 +2081,19 @@ begin
   // 当作有反馈
   Windows.InterlockedExchange(FGetFeedback, 1);
 
-  // 未停止，取任务成功
+  // 未停止，取任务成功 -> 发送
   while (Terminated = False) and FConnection.FActive and GetWork do
     try
-      SendMessage;  // 发送
+      try
+        FMsgPack.InternalSend(Self, FSender);  // 发送
+      finally
+        FLock.Acquire;
+        try
+          FreeAndNil(FMsgPack);  // 释放！
+        finally
+          FLock.Release;
+        end;
+      end;
     except
       on E: Exception do
       begin
@@ -2084,7 +2103,7 @@ begin
       end;
     end;
 
-  // 有反馈：FGetFeedback > 0
+  // 检查是否有反馈：FGetFeedback > 0
   if (Windows.InterlockedDecrement(FGetFeedback) < 0) then
   begin
     // 服务端无应答，调用 Synchronize（不同线程）
@@ -2194,23 +2213,6 @@ begin
   Synchronize(FConnection.DoThreadFatalError); // 线程同步
 end;
 
-procedure TSendThread.SendMessage;
-begin
-  // 发送消息
-  try
-    FMsgPack.FSessionId := FConnection.FSessionId; // 登录凭证
-    FMsgPack.InternalSend(Self, FSender);
-  finally
-    FLock.Acquire;
-    try
-      FMsgPack.Free;  // 释放！
-      FMsgPack := nil;
-    finally
-      FLock.Release;
-    end;
-  end;
-end;
-
 procedure TSendThread.ServerReturn(ACancel: Boolean);
 begin
   // 服务器反馈 或 忽略等待
@@ -2299,7 +2301,7 @@ procedure TPostThread.DoMethod;
 var
   Result: TResultParams;
 begin
-  // 循环处理收到的消息
+  // 循环取出、处理收到的消息
   while (Terminated = False) do
   begin
     FLock.Acquire;
@@ -2317,7 +2319,7 @@ end;
 
 procedure TPostThread.ExecInMainThread;
 const
-  SERVER_PUSH_EVENTS = [arDeleted, arRefuse { 应该没有 },
+  SERVER_PUSH_EVENTS = [arDeleted, arRefuse { 不应该存在 },
                         arTimeOut];
   SELF_ERROR_RESULTS = [arOutDate, arRefuse { c/s 模式发出 },
                         arErrBusy, arErrHash, arErrHashEx,
@@ -2403,11 +2405,11 @@ var
   Msg: TMessagePack;
   DoSynch: Boolean;
 begin
-  // 提交到主线程执行，要检查断点续传
+  // 预处理消息
+  // 最后要提交到主线程执行，要检查断点续传
   DoSynch := True;
   FResult := TResultParams(Result);
   try
-
     if (FResult.FAction in FILE_CHUNK_ACTIONS) and
        (FConnection.FSendThread.InCancelArray(FResult.FMsgId) = False) then
     begin
@@ -2486,13 +2488,9 @@ begin
 
   if (dwError <> 0) or (cbTransferred = 0) then // 断开或异常
   begin
-    // 服务端关闭时要断开连接：2019-02-28
-    if (cbTransferred = 0) and Assigned(Connection.FTimer) then
-      try
-        Connection.FTimer.Enabled := True;
-      except
-       // 空
-      end;
+    // 服务端关闭时 cbTransferred = 0, 要断开连接：2019-02-28
+    if (cbTransferred = 0) then
+      Thread.Synchronize(Connection.TryDisconnect); // 同步
     Exit;
   end;
 
