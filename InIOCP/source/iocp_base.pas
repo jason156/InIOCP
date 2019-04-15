@@ -250,7 +250,7 @@ type
 
   // 消息类型
   TWSMsgType = (
-    mtDefault,      // 标准的 WebSocket 协议
+    mtDefault,      // 标准 WebSocket 协议消息
     mtJSON,         // 扩展的 JSON 消息
     mtAttachment    // 扩展的附件流
   );

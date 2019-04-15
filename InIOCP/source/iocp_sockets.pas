@@ -87,7 +87,6 @@ type
     procedure WSExecute(const ASocket: TWebSocket); virtual; abstract;
   public
     property GlobalLock: TThreadLock read FGlobalLock; // 可以在业务操时用
-    property Server: TObject read FServer;
     property ThreadIdx: Integer read FThreadIdx;
   end;
 
@@ -112,7 +111,6 @@ type
 
     FByteCount: Cardinal;      // 接收字节数
     FComplete: Boolean;        // 接收完毕/触发业务
-
     FRefCount: Integer;        // 引用数
     FState: Integer;           // 状态（原子操作变量）
     FTickCount: Cardinal;      // 客户端访问毫秒数
@@ -121,9 +119,10 @@ type
     FData: Pointer;            // 额外的数据，由用户扩展
 
     function CheckDelayed(ATickCount: Cardinal): Boolean;
-    function GetActive: Boolean;
-    function GetReference: Boolean;
-    function GetSocketState: Boolean;
+    function GetActive: Boolean; {$IFDEF USE_INLINE} inline; {$ENDIF}
+    function GetBufferPool: TIODataPool; {$IFDEF USE_INLINE} inline; {$ENDIF}
+    function GetReference: Boolean; {$IFDEF USE_INLINE} inline; {$ENDIF}
+    function GetSocketState: Boolean; {$IFDEF USE_INLINE} inline; {$ENDIF}
 
     procedure InterCloseSocket(Sender: TObject); 
     procedure InternalRecv(Complete: Boolean);
@@ -169,19 +168,19 @@ type
     // 尝试关闭
     procedure TryClose;
   public
-    // 属性 Data，用户可以扩展  
-    property Data: Pointer read FData write FData;
-  public
     property Active: Boolean read GetActive;
+    property BufferPool: TIODataPool read GetBufferPool;
     property Complete: Boolean read FComplete;
     property LinkNode: PLinkRec read FLinkNode;
     property ObjPool: TIOCPSocketPool read FObjPool;
     property RecvBuf: PPerIOData read FRecvBuf;
     property Reference: Boolean read GetReference;
     property Sender: TBaseTaskSender read FSender;
-    property Server: TObject read FServer;
     property SocketState: Boolean read GetSocketState;
     property Worker: TBaseWorker read FWorker;
+  public
+    // 属性 Data，用户可以扩展  
+    property Data: Pointer read FData write FData;
   end;
 
   TBaseSocketClass = class of TBaseSocket;
@@ -362,7 +361,7 @@ type
     procedure ClearResources; override;
     procedure ExecuteWork; override;
   public
-    constructor Create(APool: TIOCPSocketPool; ALinkNode: PLinkRec); override;
+    constructor Create(AObjPool: TIOCPSocketPool; ALinkNode: PLinkRec); override;
     destructor Destroy; override;
 
     procedure PostEvent(IOKind: TIODataType); override;
@@ -610,7 +609,7 @@ begin
   // FSocket 由客户端接入时分配
   //   见：TInIOCPServer.AcceptClient
   //       TIOCPSocketPool.CreateObjData
-  FObjPool := AObjPool;
+  FObjPool := AObjPool; 
   FLinkNode := ALinkNode;
   FUseTransObj := True;  
 end;
@@ -688,7 +687,7 @@ begin
   {$ENDIF}
   if TInIOCPServer(FServer).Active and Assigned(FRecvBuf) then
   begin
-    TInIOCPServer(FServer).IODataPool.Push(FRecvBuf^.Node);
+    BufferPool.Push(FRecvBuf^.Node);
     FRecvBuf := Nil;
   end;
   inherited;
@@ -742,6 +741,12 @@ function TBaseSocket.GetActive: Boolean;
 begin
   // 推送前取初始化状态（接收过数据）
   Result := (iocp_api.InterlockedCompareExchange(Integer(FByteCount), 0, 0) > 0);
+end;
+
+function TBaseSocket.GetBufferPool: TIODataPool;
+begin
+  // 取内存池
+  Result := TInIOCPServer(FServer).IODataPool;
 end;
 
 function TBaseSocket.GetReference: Boolean;
@@ -891,7 +896,7 @@ begin
     FRecvBuf := ARecvBuf
   else
   if (FRecvBuf = nil) then
-    FRecvBuf := TInIOCPServer(FServer).IODataPool.Pop^.Data;
+    FRecvBuf := BufferPool.Pop^.Data;
 
   // 扩展数据
   if Assigned(AData) then
@@ -1179,7 +1184,7 @@ begin
   FActResult := AActResult;
 
   if (FAction = atUnknown) then  // 响应
-    FVarCount := TInIOCPServer(FSocket.FWorker.FServer).IOCPSocketPool.UsedCount // 客户端要判断
+    FVarCount := FSocket.ObjPool.UsedCount // 客户端要判断
   else
     FVarCount := 0;
 
@@ -1934,7 +1939,7 @@ begin
     FReceiver.Clear;
 end;
 
-constructor TWebSocket.Create(APool: TIOCPSocketPool; ALinkNode: PLinkRec);
+constructor TWebSocket.Create(AObjPool: TIOCPSocketPool; ALinkNode: PLinkRec);
 begin
   inherited;
   FUseTransObj := False;  // 不用 TransmitFile

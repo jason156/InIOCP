@@ -1510,7 +1510,8 @@ begin
     if Assigned(Socket) then // 给 Socket，ioPush，长度未知 0
       Msg := TPushMessage.Create(Socket, ioPush, 0)
     else // 广播
-      Msg := TPushMessage.Create(FServer, ioPush);
+      Msg := TPushMessage.Create(TInIOCPServer(FServer).WebSocketPool,
+                                 TInIOCPServer(FServer).IODataPool);
 
     // 构建帧，操作：OpCode，长度：Data^.len
     Data := @(Msg.PushBuf^.Data);

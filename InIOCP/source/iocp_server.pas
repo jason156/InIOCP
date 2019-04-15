@@ -191,7 +191,7 @@ type
     FOnDataSend: TOnStreamOutEvent;      // 发出数据
     FOnDisconnect: TOnConnectEvnet;      // 断开事件    
     FOnError: TOnErrorEvent;             // 异常事件
-
+    
     // 客户端接入
     procedure AcceptClient(Socket: TSocket; AddrIn: PSockAddrIn);
     procedure AcceptExClient(IOData: PPerIOData; ErrorCode: Integer);

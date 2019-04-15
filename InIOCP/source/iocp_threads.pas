@@ -101,7 +101,7 @@ type
     FTickCount: Cardinal;       // 加入时间毫秒
   public
     constructor Create(Msg: PPerIOData; Broadcast: Boolean = False); overload;
-    constructor Create(Server: TObject; IOKind: TIODataType); overload;
+    constructor Create(ASocketPool: TIOCPSocketPool; ABufferPool: TIODataPool); overload;
     constructor Create(Socket: TBaseSocket; IOKind: TIODataType; MsgSize: Cardinal); overload;
     destructor Destroy; override;
   public
@@ -498,7 +498,7 @@ begin
   FBroadcast := Broadcast;  // ！
   FTickCount := GetTickCount;  // 当前时间
   FObjPool := TBaseSocket(Msg^.Owner).ObjPool;
-  FBufPool := TInIOCPServer(TBaseSocket(Msg^.Owner).Server).IODataPool;  
+  FBufPool := TBaseSocket(Msg^.Owner).BufferPool;  
 
   FPushBuf := FBufPool.Pop^.Data;
   FPushBuf^.IOType := ioPush; // 推送
@@ -508,29 +508,30 @@ begin
   System.Move(Msg^.Data.buf^, FPushBuf^.Data.buf^, FPushBuf^.Data.len);
 end;
 
-constructor TPushMessage.Create(Server: TObject; IOKind: TIODataType);
+constructor TPushMessage.Create(ASocketPool: TIOCPSocketPool; ABufferPool: TIODataPool);
 begin
   inherited Create;
-  // 建一条广播消息，外部设置内容
+  // WebSocket 广播专用：
+  // 广播一条消息，在外部设置 FPushBuf 内容
   FBroadcast := True;
   FTickCount := GetTickCount;  // 当前时间
-  FObjPool := TInIOCPServer(Server).IOCPSocketPool;
-  FBufPool := TInIOCPServer(Server).IODataPool;
+  FObjPool := ASocketPool;
+  FBufPool := ABufferPool;
 
   FPushBuf := FBufPool.Pop^.Data;
 
-  FPushBuf^.IOType := IOKind; // 类型
+  FPushBuf^.IOType := ioPush; // 固定 = ioPush
   FPushBuf^.Data.len := 0;  // 内容长度
 end;
 
 constructor TPushMessage.Create(Socket: TBaseSocket; IOKind: TIODataType; MsgSize: Cardinal);
 begin
   inherited Create;
-  // 建一条给 AOwner 的 IOKind 类型消息，以便外部构建消息内容
+  // 建一条给 AOwner 的 IOKind 类型消息，由外部构建消息内容
   FBroadcast := False;
   FTickCount := GetTickCount;  // 当前时间
   FObjPool := Socket.ObjPool;
-  FBufPool := TInIOCPServer(Socket.Server).IODataPool;
+  FBufPool := Socket.BufferPool;
 
   FPushBuf := FBufPool.Pop^.Data;
 

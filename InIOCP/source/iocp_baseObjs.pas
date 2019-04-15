@@ -53,11 +53,13 @@ type
   // ===================== 系统全局锁 =====================
 
   TSystemGlobalLock = class(TThreadLock)
+  {$IFNDEF DELPHI_7}
   private
     class var
     FMessageId: TIOCPMsgId;        // 消息编号
     FInstance: TSystemGlobalLock;  // 当前实例
     FRefCount: Integer;            // 引用次数
+  {$ENDIF}
   public
     class function CreateGlobalLock: TSystemGlobalLock;
     class function GetMsgId: TIOCPMsgId;
@@ -65,6 +67,13 @@ type
   end;
 
 implementation
+
+{$IFDEF DELPHI_7}
+var
+  FMessageId: TIOCPMsgId;        // 消息编号
+  FInstance: TSystemGlobalLock;  // 当前实例
+  FRefCount: Integer;            // 引用次数
+{$ENDIF}
 
 { TThreadLock }
 
