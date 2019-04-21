@@ -1658,7 +1658,7 @@ begin
         begin
           iocp_wsExt.SetKeepAlive(oSocket.Socket);  // 心跳
           TInIOCPServer(FOwner.FServer).IOCPEngine.BindIoCompletionPort(oSocket.Socket);  // 绑定
-          TSocketBrokerRef(oSocket).SendInnerFlag; // 发送标志
+          TSocketBrokerRef(oSocket).SendInnerFlag;  // 发送标志
           Break;
         end else
         if (Terminated = False) then
@@ -1785,7 +1785,7 @@ begin
         Inc(k);
         Sleep(10);
       end;
-    until TInIOCPServer(FServer).Active and ((k > 300) or Assigned(oSocket));
+    until TInIOCPServer(FServer).Active and ((k > 100) or Assigned(oSocket));
   end;
 end;
 

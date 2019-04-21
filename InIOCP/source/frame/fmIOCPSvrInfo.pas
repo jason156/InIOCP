@@ -84,7 +84,7 @@ procedure TFrameIOCPSvrInfo.GetServerInfo(Sender: TObject);
 var
   ActiveCount: Integer;
   CountA, CountB: Integer;
-  CountC, CountD: Integer;
+  CountC, CountD, CountE: Integer;
   WorkTotalCount: IOCP_LARGE_INTEGER;
   CheckTimeOut: TDateTime;
   ThreadSummary: TWorkThreadSummary;
@@ -135,18 +135,23 @@ begin
     // 2. TPerIOData 池：总数、C/S 使用、HTTP使用、推送列表使用
     //    Socket 的 RecvBuf 不回收，推送的 TPerIOData 回收，所以：
     //    CountA >= CountB + CountC + FServer.BusiWorkMgr.ThreadCount
-    
+
     FServer.GetIODataInfo(CountA, CountB, CountC, CountD);
+
+    if Assigned(FServer.IOCPBroker) then
+      CountE := FServer.BusinessThreadCount * 2
+    else
+      CountE := FServer.BusinessThreadCount;
 
     if FServer.StreamMode then  // 无 Http、推送功能
       lblIODataInfo.Caption := '总计:' + IntToStr(CountA) +
                                ',C/S:' + IntToStr(CountB) { 活动的 } +
-                               ',发送器:' + IntToStr(FServer.BusinessThreadCount)
+                               ',发送器:' + IntToStr(CountE)
     else
       lblIODataInfo.Caption := '总计:' + IntToStr(CountA) +
                                ',C/S:' + IntToStr(CountB) { 活动的 } +
                                ',HTTP:' + IntToStr(CountC) { 活动的 } +
-                               ',发送器:' + IntToStr(FServer.BusinessThreadCount) +
+                               ',发送器:' + IntToStr(CountE) +
                                ',推送:' + IntToStr(CountD) + '.';
 
     // 3. 线程使用：工作线程、超时检查、关闭套接字、

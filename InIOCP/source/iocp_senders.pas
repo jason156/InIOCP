@@ -17,7 +17,7 @@ interface
 
 uses
   Windows, Classes, Variants, Sysutils,
-  iocp_Winsock2, iocp_base, iocp_wsExt;
+  iocp_Winsock2, iocp_base, iocp_objPools, iocp_wsExt;
 
 type
 
@@ -140,16 +140,16 @@ type
 
   TServerTaskSender = class(TBaseTaskSender)
   private
-    procedure SetSendBuf(const Value: PPerIOData);
+    FDualBuf: PPerIOData;   // 轮换的内存块
+    FTempBuf: PPerIOData;   // 临时变量
   protected
     procedure DirectSend(OutBuf: PAnsiChar; OutSize, FrameSize: Integer); override;
     procedure ReadSendBuffers(InBuf: PAnsiChar; ReadCount, FrameSize: Integer); override;
   public
-    constructor Create;
-    destructor Destroy; override;
+    constructor Create(BufferPool: TIODataPool; DoubleBuf: Boolean);
     procedure CopySend(ARecvBuf: PPerIOData);
+    procedure FreeBuffers(BufferPool: TIODataPool);
   public
-    property SendBuf: PPerIOData read FSendBuf write SetSendBuf;
     property Chunked;
   end;
 
@@ -881,23 +881,30 @@ end;
 
 procedure TServerTaskSender.CopySend(ARecvBuf: PPerIOData);
 begin
-  // 复制发送 TPerIOData
-  FSendBuf^.Data.len := ARecvBuf^.Overlapped.InternalHigh;
-  System.Move(ArecvBuf^.Data.buf^, FSendBuf^.Data.buf^, FSendBuf^.Data.len);
-  DirectSend(nil, FSendBuf^.Data.len, 0);  // 直接发送
+  // 复制发送 TPerIOData（轮流使用发送内存块，以防产生占用冲突）
+  try
+    FTempBuf := FDualBuf;
+    FSendBuf^.Data.len := ARecvBuf^.Overlapped.InternalHigh;
+    System.Move(ARecvBuf^.Data.buf^, FSendBuf^.Data.buf^, FSendBuf^.Data.len);
+    DirectSend(nil, FSendBuf^.Data.len, 0);  // 直接发送
+  finally
+    FDualBuf := FSendBuf;  // 交换变量
+    FSendBuf := FTempBuf;
+  end;
 end;
 
-constructor TServerTaskSender.Create;
+constructor TServerTaskSender.Create(BufferPool: TIODataPool; DoubleBuf: Boolean);
 begin
-  inherited;
+  inherited Create;
+  FSendBuf := BufferPool.Pop^.Data;
+  FSendBuf^.Data.len := IO_BUFFER_SIZE;
+  if DoubleBuf then  // 代理模式，双发送内存块
+  begin
+    FDualBuf := BufferPool.Pop^.Data;
+    FDualBuf^.Data.len := IO_BUFFER_SIZE;
+  end;
   FBufferSize := IO_BUFFER_SIZE;
-  FWebSocket := False;  
-end;
-
-destructor TServerTaskSender.Destroy;
-begin
-  FSendBuf := nil;  // 改为在外部释放
-  inherited;    
+  FWebSocket := False;
 end;
 
 procedure TServerTaskSender.DirectSend(OutBuf: PAnsiChar; OutSize, FrameSize: Integer);
@@ -934,6 +941,17 @@ begin
 
 end;
 
+procedure TServerTaskSender.FreeBuffers(BufferPool: TIODataPool);
+begin
+  BufferPool.Push(FSendBuf^.Node);
+  FSendBuf := nil;
+  if Assigned(FDualBuf) then
+  begin
+    BufferPool.Push(FDualBuf^.Node);
+    FDualBuf := nil;
+  end;
+end;
+
 procedure TServerTaskSender.ReadSendBuffers(InBuf: PAnsiChar; ReadCount, FrameSize: Integer);
 begin
   // 读数据到发送缓存，发送
@@ -951,14 +969,6 @@ begin
     System.Move(InBuf^, FSendBuf^.Data.buf^, ReadCount);
     DirectSend(nil, ReadCount, 0);
   end;
-end;
-
-procedure TServerTaskSender.SetSendBuf(const Value: PPerIOData);
-begin
-  // 分离服务端、客户端单元
-  // 改为从外部赋值发送内存空间
-  FSendBuf := Value;
-  FSendBuf^.Data.len := IO_BUFFER_SIZE;
 end;
 
 { TClientTaskSender }

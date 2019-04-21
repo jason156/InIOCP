@@ -14,7 +14,7 @@ object FormInIOCPNewFeatures: TFormInIOCPNewFeatures
   Position = poDesktopCenter
   Scaled = False
   OnCreate = FormCreate
-  PixelsPerInch = 96
+  PixelsPerInch = 120
   TextHeight = 14
   object Memo1: TMemo
     Left = 23
@@ -204,17 +204,16 @@ object FormInIOCPNewFeatures: TFormInIOCPNewFeatures
   end
   object InDBSQLClient1: TInDBSQLClient
     OnReturnResult = InDBSQLClient1ReturnResult
-    Connection = InConnection1
+    DBConnection = InDBConnection1
     Left = 440
-    Top = 272
+    Top = 288
   end
   object InDBQueryClient1: TInDBQueryClient
     OnReturnResult = InDBSQLClient1ReturnResult
-    Connection = InConnection1
+    DBConnection = InDBConnection1
     ClientDataSet = ClientDataSet1
-    TableName = 'TBL_XZQH'
     Left = 496
-    Top = 272
+    Top = 288
   end
   object InFunctionClient1: TInFunctionClient
     OnReturnResult = InFunctionClient1ReturnResult
@@ -232,5 +231,11 @@ object FormInIOCPNewFeatures: TFormInIOCPNewFeatures
     DataSet = ClientDataSet1
     Left = 496
     Top = 328
+  end
+  object InDBConnection1: TInDBConnection
+    Connection = InConnection1
+    ConnectionIndex = 0
+    Left = 440
+    Top = 248
   end
 end

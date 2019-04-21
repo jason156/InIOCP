@@ -68,7 +68,7 @@ end;
 procedure TFormInIOCPWsJSONMsgClient.InWSConnection1ReceiveMsg(Sender: TObject; Msg: TJSONResult);
 begin
   // 收到 InIOCP-JSON 消息（被动接收）
-//  Memo1.Lines.Add('收到:' + Msg.S['msg']);
+  Memo1.Lines.Add('收到:' + Msg.S['msg']);
 end;
 
 procedure TFormInIOCPWsJSONMsgClient.InWSConnection1ReturnResult(Sender: TObject; Result: TJSONResult);

@@ -235,8 +235,7 @@ begin
       FLock.Release;
     end;
     try
-      if Socket.Connected then  // 可能接入时被关闭
-        Socket.Close;
+      Socket.Close;
     finally
       Socket.ObjPool.Push(Socket.LinkNode);
     end;
@@ -247,7 +246,7 @@ procedure TCloseSocketThread.WaitFor;
 begin
   // 等待全部 Socket 关闭完毕
   while (FSockets.Count > 0) do
-    Sleep(20);
+    Sleep(10);
 end;
 
 { TBusiThread }
@@ -256,7 +255,7 @@ procedure TBusiThread.AfterWork;
 begin
   // 启用线程数 -1
   Windows.InterlockedDecrement(FManager.FThreadCount);
-  TInIOCPServer(FManager.FServer).IODataPool.Push(FSender.SendBuf^.Node);  // 释放发送缓存
+  FSender.FreeBuffers(TInIOCPServer(FManager.FServer).IODataPool);  // 释放发送缓存
   FSender.Free;
 end;
 
@@ -265,8 +264,8 @@ begin
   inherited Create(False);
   FManager := AManager;
   FSemaphore := FManager.FSemaphore;  // 引用
-  FSender := TServerTaskSender.Create;  // 给 Socket 引用
-  FSender.SendBuf := TInIOCPServer(FManager.FServer).IODataPool.Pop^.Data;
+  with TInIOCPServer(FManager.FServer) do
+    FSender := TServerTaskSender.Create(IODataPool, Assigned(IOCPBroker));
 end;
 
 procedure TBusiThread.DoMethod;
@@ -429,7 +428,7 @@ begin
   StartBackSocketList;
   try
     while (FActiveThreadCount > 0) do  // 等活动线程执行完毕
-      Sleep(20);
+      Sleep(10);
     for i := 0 to FThreadCount - 1 do  // 增/删每执行者的对应数模实例
       if AddMode then
         TBusiWorker(FThreads[i].FWorker).AddDataModule(Index)
@@ -455,7 +454,7 @@ begin
     while (FThreadCount > 0) do  // 等待全部线程退出
     begin
       ReleaseSemapHore(FSemaphore, 1, Nil);
-      Sleep(20);
+      Sleep(10);
     end;
 
     SetLength(FThreads, 0);
@@ -486,7 +485,7 @@ procedure TBusiWorkManager.WaitFor;
 begin
   // 等待活动线程结束
   while (FActiveThreadCount > 0) do
-    Sleep(20);
+    Sleep(10);
 end;
 
 { TPushMessage }
@@ -882,7 +881,7 @@ begin
     while (FThreadCount > 0) do
     begin
       ReleaseSemapHore(FSemaphore, 1, Nil);
-      Sleep(20);
+      Sleep(10);
     end;
 
     SetLength(FThreads, 0);
@@ -906,7 +905,7 @@ procedure TPushMsgManager.WaitFor;
 begin
   // 等待活动线程结束
   while (FActiveThreadCount > 0) do
-    Sleep(20);
+    Sleep(10);
 end;
 
 end.

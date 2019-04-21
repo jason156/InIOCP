@@ -34,6 +34,7 @@ type
     Button5: TButton;
     EditServer: TEdit;
     Button7: TButton;
+    InDBConnection1: TInDBConnection;
     procedure Button2Click(Sender: TObject);
     procedure btnDisconnectClick(Sender: TObject);
     procedure Button3Click(Sender: TObject);

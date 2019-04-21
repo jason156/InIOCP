@@ -305,12 +305,13 @@ type
     FByteCount: Cardinal;           // 收到字节数
     FErrorCode: Integer;            // 异常代码
     FPerIOData: PPerIOData;         // 重叠结果
-    FSocket: TBaseSocket;           // 当前客户端对象
+    FBaseSocket: TBaseSocket;       // 当前客户端对象
     FState: Integer;                // 客户端对象状态
 
+    procedure HandleIOData;
+  private
     procedure CalcIOSize; {$IFDEF USE_INLINE} inline; {$ENDIF}
     procedure ExecIOEvent; {$IFDEF USE_INLINE} inline; {$ENDIF}
-    procedure HandleIOData; {$IFDEF USE_INLINE} inline; {$ENDIF}
     procedure WriteCloseLog(const PeerIPPort: string); {$IFDEF USE_INLINE} inline; {$ENDIF}
   protected
     procedure ExecuteWork; override;
@@ -409,7 +410,7 @@ begin
 end;
 
 function TIOCPEngine.GetIoCompletionStatus(var ByteCount: Cardinal;
-  var PerIOData: PPerIOData): Boolean;
+                     var PerIOData: PPerIOData): Boolean;
 var
   CompletionKey: ULONG_PTR;
 begin
@@ -420,7 +421,7 @@ end;
 
 procedure TIOCPEngine.StopIoCompletionPort;
 begin
-  // 通知 IOCP 停止工作
+  // 投放 nil，通知 IOCP 停止工作
   iocp_api.PostQueuedCompletionStatus(FHandle, 0, 0, nil);
 end;
 
@@ -792,7 +793,7 @@ begin
       FPeerIPList.DecRef(ASocket.PeerIP);
     if Assigned(FSessionMgr) and (ASocket is THttpSocket) then
       FSessionMgr.DecRef(THttpSocket(ASocket).SessionId);
-    if Assigned(FOnDisconnect) then  // 客户端断开事件
+    if Assigned(FOnDisconnect) and ASocket.Connected then  // 客户端断开事件
       FOnDisconnect(Self, ASocket);      
     FCloseThread.AddSocket(ASocket);
   end;
@@ -1521,10 +1522,10 @@ begin
   begin
     // 不在此处理收到原始数据流，见：TStreamSocket.ExecuteWork
     if (FServer.FStreamMode = False) and Assigned(FServer.FOnDataReceive) then
-      FServer.FOnDataReceive(FSocket, FPerIOData^.Data.buf, FByteCount);
+      FServer.FOnDataReceive(FBaseSocket, FPerIOData^.Data.buf, FByteCount);
   end else
   if Assigned(FServer.FOnDataSend) then  // 发出数据事件
-    FServer.FOnDataSend(FSocket, FByteCount);
+    FServer.FOnDataSend(FBaseSocket, FByteCount);
 end;
 
 procedure TWorkThread.ExecuteWork;
@@ -1633,7 +1634,7 @@ begin
     end;
 
   // 取对应的 Socket
-  FSocket := TBaseSocket(FPerIOData^.Owner);
+  FBaseSocket := TBaseSocket(FPerIOData^.Owner);
 
   // 计算流量
   CalcIOSize;
@@ -1645,19 +1646,19 @@ begin
     IODATA_STATE_ERROR: // 1. 尝试关闭
       begin
         {$IFDEF DEBUG_MODE}
-        if (FPerIOData^.IOType <> ioPush) or FSocket.Reference then
-          if (FSocket.PeerIPPort = '') then  // 关联建的 Socket
-            WriteCloseLog('Broker Dual')
-          else
-            WriteCloseLog(FSocket.PeerIPPort);
+        if (FPerIOData^.IOType <> ioPush) or FBaseSocket.Reference then
+          WriteCloseLog(FBaseSocket.PeerIPPort);
         {$ENDIF}
-        FSocket.TryClose;
+        FBaseSocket.TryClose;
       end;
     IODATA_STATE_RECV:  // 2. 收到数据，加锁使用
-      FServer.FBusiWorkMgr.AddWork(FSocket); // 加入业务线程列表
+      begin
+        TBaseSocketRef(FBaseSocket).MarkIODataBuf(FPerIOData);
+        FServer.FBusiWorkMgr.AddWork(FBaseSocket); // 加入业务线程列表
+      end;
     {$IFDEF TRANSMIT_FILE}
     IODATA_STATE_TRANS: // 3. TransmitFile 发送完毕，释放数据源
-      FSocket.FreeTransmitRes;
+      FBaseSocket.FreeTransmitRes;
     {$ENDIF}
   end;
 
@@ -1928,5 +1929,5 @@ begin
   ReleaseSemapHore(FSemapHore, 1, Nil);  // 信号量+1，触发 WaitForSingleObject
   while FServer.FTimeoutChecking do Sleep(10);
 end;
-
+  
 end.

@@ -100,7 +100,7 @@ begin
 //  TStreamSocket(Sender).SendData('Test Text 中文');
 
   // 3. 发送一个 htm文件（含报头+内容）
-{  Stream := TFileStream.Create('stream.htm', fmShareDenyWrite);  // 要共享读，否则很慢
+{  Stream := TFileStream.Create('retrun_stream.txt', fmShareDenyWrite);  // 要共享读，否则很慢
   TStreamSocket(Sender).SendData(Stream);   // 自动释放 Stream  }
 
   // 4. 直接打开文件发送 Handle(共享读)
