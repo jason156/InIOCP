@@ -1,0 +1,52 @@
+2019-04-22 11:10:52 867: TInIOCPServer.Prepare->FListenSocket（监听套接字）创建成功。
+2019-04-22 11:10:52 867: TInIOCPServer.OpenDetails->FGlobalLock（全局锁）创建成功。
+2019-04-22 11:10:52 867: TInIOCPServer.OpenDetails->FIODataPool（内存池）创建成功。
+2019-04-22 11:10:52 867: TInIOCPServer.OpenDetails->FSocketPool（客户池）创建成功。
+2019-04-22 11:10:52 867: TInIOCPServer.OpenDetails->FHttpSocketPool（客户池）创建成功。
+2019-04-22 11:10:52 867: TInIOCPServer.OpenDetails->FIOCPEngine（IOCP引擎）创建成功。
+2019-04-22 11:10:52 867: TInIOCPServer.OpenDetails->FWorkThreadPool（工作线程池）创建成功。
+2019-04-22 11:10:52 868: TWorkThread.ExecuteWork->准备工作线程: 2
+2019-04-22 11:10:52 868: TWorkThread.ExecuteWork->准备工作线程: 4
+2019-04-22 11:10:52 870: TWorkThread.ExecuteWork->准备工作线程: 3
+2019-04-22 11:10:52 870: TWorkThread.ExecuteWork->准备工作线程: 1
+2019-04-22 11:10:52 900: TBusiWorker.CreateDataModule->创建数模成功: 0
+2019-04-22 11:10:52 904: TBusiWorker.CreateDataModule->创建数模成功: 0
+2019-04-22 11:10:52 907: TBusiWorker.CreateDataModule->创建数模成功: 0
+2019-04-22 11:10:52 911: TBusiWorker.CreateDataModule->创建数模成功: 0
+2019-04-22 11:10:52 915: TBusiWorker.CreateDataModule->创建数模成功: 0
+2019-04-22 11:10:52 922: TBusiWorker.CreateDataModule->创建数模成功: 0
+2019-04-22 11:10:52 926: TBusiWorker.CreateDataModule->创建数模成功: 0
+2019-04-22 11:10:52 929: TBusiWorker.CreateDataModule->创建数模成功: 0
+2019-04-22 11:10:52 929: TInIOCPServer.OpenDetails->FBusiThreadMgr（业务线程管理）创建成功。
+2019-04-22 11:10:52 929: TInIOCPServer.OpenDetails->FPushManager（推送线程管理）创建成功。
+2019-04-22 11:10:52 929: TInIOCPServer.OpenDetails->FCloseThread（关闭套接字线程）创建成功。
+2019-04-22 11:10:52 929: TInIOCPServer.OpenDetails->FCheckThread（超时检查线程）创建成功。
+2019-04-22 11:10:52 931: TInIOCPServer.OpenDetails->FAcceptManager（客户端接入管理）创建成功。
+2019-04-22 11:10:52 931: TInIOCPServer.OpenDetails->IOCP 服务启动成功。
+2019-04-22 11:10:59 788: TInIOCPServer.AcceptClient->客户端接入：127.0.0.1:14029
+2019-04-22 11:15:00 671: TWorkThread.HandleIOData->客户端关闭：127.0.0.1:14029,WorkThread:1
+2019-04-22 11:15:02 729: TInIOCPServer.InternalClose->FCheckThread（超时检查线程）停止成功。
+2019-04-22 11:15:02 729: TInIOCPServer.InternalClose->FListenSocket（监听套接字）释放成功。
+2019-04-22 11:15:02 729: TWorkThread.ExecuteWork->停止工作线程: 1
+2019-04-22 11:15:02 749: TWorkThread.ExecuteWork->停止工作线程: 3
+2019-04-22 11:15:02 769: TWorkThread.ExecuteWork->停止工作线程: 4
+2019-04-22 11:15:02 789: TWorkThread.ExecuteWork->停止工作线程: 2
+2019-04-22 11:15:02 809: TInIOCPServer.InternalClose->FWorkThreadPool（工作线程池）停止成功。
+2019-04-22 11:15:02 809: TInIOCPServer.InternalClose->FAcceptManager（客户端接入管理）释放成功。
+2019-04-22 11:15:02 810: TBusiWorker.Destroy->释放数模成功: 0
+2019-04-22 11:15:02 811: TBusiWorker.Destroy->释放数模成功: 0
+2019-04-22 11:15:02 812: TBusiWorker.Destroy->释放数模成功: 0
+2019-04-22 11:15:02 813: TBusiWorker.Destroy->释放数模成功: 0
+2019-04-22 11:15:02 827: TBusiWorker.Destroy->释放数模成功: 0
+2019-04-22 11:15:02 828: TBusiWorker.Destroy->释放数模成功: 0
+2019-04-22 11:15:02 829: TBusiWorker.Destroy->释放数模成功: 0
+2019-04-22 11:15:02 862: TBusiWorker.Destroy->释放数模成功: 0
+2019-04-22 11:15:02 872: TInIOCPServer.InternalClose->FBusiThreadMgr（业务线程管理）释放成功。
+2019-04-22 11:15:02 952: TInIOCPServer.InternalClose->FPushManager（推送线程管理）释放成功。
+2019-04-22 11:15:02 952: TInIOCPServer.InternalClose->FIOCPEngine（IOCP引擎）释放成功。
+2019-04-22 11:15:02 952: TInIOCPServer.InternalClose->FSocketPool（客户池）释放成功。
+2019-04-22 11:15:02 952: TInIOCPServer.InternalClose->FHttpSocketPool（客户池）释放成功。
+2019-04-22 11:15:02 952: TInIOCPServer.InternalClose->FIODataPool（内存池）释放成功。
+2019-04-22 11:15:02 952: TInIOCPServer.InternalClose->FGlobalLock（全局锁）释放成功。
+2019-04-22 11:15:02 952: TInIOCPServer.InternalClose->FCloseThread（关闭套接字线程）停止成功。
+2019-04-22 11:15:02 952: TInIOCPServer.InternalClose->IOCP 服务停止成功。

@@ -1,0 +1,36 @@
+2019-04-22 11:48:17 255: TInIOCPServer.Prepare->FListenSocket（监听套接字）创建成功。
+2019-04-22 11:48:17 255: TInIOCPServer.OpenDetails->FGlobalLock（全局锁）创建成功。
+2019-04-22 11:48:17 255: TInIOCPServer.OpenDetails->FIODataPool（内存池）创建成功。
+2019-04-22 11:48:17 255: TInIOCPServer.OpenDetails->FSocketPool（客户池）创建成功。
+2019-04-22 11:48:17 255: TInIOCPServer.OpenDetails->FHttpSocketPool（客户池）创建成功。
+2019-04-22 11:48:17 255: TInIOCPServer.OpenDetails->FWebSocketPool（WebSocket池）创建成功。
+2019-04-22 11:48:17 255: TInIOCPServer.OpenDetails->FIOCPEngine（IOCP引擎）创建成功。
+2019-04-22 11:48:17 255: TInIOCPServer.OpenDetails->FWorkThreadPool（工作线程池）创建成功。
+2019-04-22 11:48:17 256: TWorkThread.ExecuteWork->准备工作线程: 2
+2019-04-22 11:48:17 256: TWorkThread.ExecuteWork->准备工作线程: 1
+2019-04-22 11:48:17 256: TInIOCPServer.OpenDetails->FBusiThreadMgr（业务线程管理）创建成功。
+2019-04-22 11:48:17 256: TInIOCPServer.OpenDetails->FPushManager（推送线程管理）创建成功。
+2019-04-22 11:48:17 256: TInIOCPServer.OpenDetails->FCloseThread（关闭套接字线程）创建成功。
+2019-04-22 11:48:17 256: TInIOCPServer.OpenDetails->FCheckThread（超时检查线程）创建成功。
+2019-04-22 11:48:17 258: TInIOCPServer.OpenDetails->FAcceptManager（客户端接入管理）创建成功。
+2019-04-22 11:48:17 258: TInIOCPServer.OpenDetails->IOCP 服务启动成功。
+2019-04-22 11:48:21 362: TInIOCPServer.AcceptClient->客户端接入：127.0.0.1:48335
+2019-04-22 11:48:40 732: TInIOCPServer.AcceptClient->客户端接入：127.0.0.1:49615
+2019-04-22 11:49:04 241: TWorkThread.HandleIOData->客户端关闭：127.0.0.1:49615,WorkThread:1
+2019-04-22 11:49:05 865: TWorkThread.HandleIOData->客户端关闭：127.0.0.1:48335,WorkThread:2
+2019-04-22 11:49:10 139: TInIOCPServer.InternalClose->FCheckThread（超时检查线程）停止成功。
+2019-04-22 11:49:10 139: TInIOCPServer.InternalClose->FListenSocket（监听套接字）释放成功。
+2019-04-22 11:49:10 139: TWorkThread.ExecuteWork->停止工作线程: 2
+2019-04-22 11:49:10 139: TWorkThread.ExecuteWork->停止工作线程: 1
+2019-04-22 11:49:10 159: TInIOCPServer.InternalClose->FWorkThreadPool（工作线程池）停止成功。
+2019-04-22 11:49:10 159: TInIOCPServer.InternalClose->FAcceptManager（客户端接入管理）释放成功。
+2019-04-22 11:49:10 169: TInIOCPServer.InternalClose->FBusiThreadMgr（业务线程管理）释放成功。
+2019-04-22 11:49:10 239: TInIOCPServer.InternalClose->FPushManager（推送线程管理）释放成功。
+2019-04-22 11:49:10 239: TInIOCPServer.InternalClose->FIOCPEngine（IOCP引擎）释放成功。
+2019-04-22 11:49:10 239: TInIOCPServer.InternalClose->FSocketPool（客户池）释放成功。
+2019-04-22 11:49:10 239: TInIOCPServer.InternalClose->FHttpSocketPool（客户池）释放成功。
+2019-04-22 11:49:10 239: TInIOCPServer.InternalClose->FWebSocketPool（WebSocket池）释放成功。
+2019-04-22 11:49:10 239: TInIOCPServer.InternalClose->FIODataPool（内存池）释放成功。
+2019-04-22 11:49:10 239: TInIOCPServer.InternalClose->FGlobalLock（全局锁）释放成功。
+2019-04-22 11:49:10 239: TInIOCPServer.InternalClose->FCloseThread（关闭套接字线程）停止成功。
+2019-04-22 11:49:10 239: TInIOCPServer.InternalClose->IOCP 服务停止成功。

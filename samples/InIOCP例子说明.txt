@@ -2,6 +2,8 @@
 编号   目录                     说明
 ==============================================================
  0     00_data			全部例子共用的数据库
+ 0     00_测试工具		测试工具、命令
+
  1     01_CertifyServer		认证服务、客户端/用户管理
  2     02_MessageServer		消息服务、消息推送
  3     03_FileServer		文件服务
@@ -14,6 +16,7 @@
 10     10_HttpServiceApp	HTTP服务程序
 11     11_WebQueryScores        考试成绩查询
 12     12_DoubleServer          同一应用使用双服务
+13     13_InLog			InIOCP的快速日志
 
 20     20_WebSocketChat		WebSocekt服务
 21     21_WebSocketJSON		WebSocekt 的 InIOCP-JSON 消息封装
