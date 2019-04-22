@@ -136,12 +136,7 @@ begin
     //    Socket 的 RecvBuf 不回收，推送的 TPerIOData 回收，所以：
     //    CountA >= CountB + CountC + FServer.BusiWorkMgr.ThreadCount
 
-    FServer.GetIODataInfo(CountA, CountB, CountC, CountD);
-
-    if Assigned(FServer.IOCPBroker) then
-      CountE := FServer.BusinessThreadCount * 2
-    else
-      CountE := FServer.BusinessThreadCount;
+    FServer.GetIODataInfo(CountA, CountB, CountC, CountD, CountE);
 
     if FServer.StreamMode then  // 无 Http、推送功能
       lblIODataInfo.Caption := '总计:' + IntToStr(CountA) +

@@ -223,7 +223,8 @@ type
                             HttpSocketCount, HttpSocketUsedCount,
                             ActiveCount: Integer; var WorkTotalCount: IOCP_LARGE_INTEGER);
     procedure GetIODataInfo(var IODataCount, CSSocketUsedCount,
-                            HttpSocketUsedCount, PushActiveCount: Integer);
+                            HttpSocketUsedCount, PushActiveCount,
+                            WorkerUsedCount: Integer);
     procedure GetThreadInfo(const ThreadInfo: PWorkThreadSummary;
                             var BusiThreadCount, BusiActiveCount,
                             PushThreadCount, PushActiveCount: Integer;
@@ -894,23 +895,36 @@ begin
 end;
 
 procedure TInIOCPServer.GetIODataInfo(var IODataCount,
-  CSSocketUsedCount, HttpSocketUsedCount, PushActiveCount: Integer);
+  CSSocketUsedCount, HttpSocketUsedCount, PushActiveCount,
+  WorkerUsedCount: Integer);
 begin
   // 统计内存块的使用
   IODataCount := FIODataPool.NodeCount;  // 总数
-  CSSocketUsedCount := FSocketPool.NodeCount;  // C/S 占用数
-  if Assigned(FWebSocketPool) then   // 建了 TWebSocket
-    Inc(CSSocketUsedCount, FWebSocketPool.NodeCount);
 
-  if Assigned(FHttpSocketPool) then  // 建了 THttpSocket
-    HttpSocketUsedCount := FHttpSocketPool.NodeCount
-  else
+  if Assigned(FIOCPBroker) then
+  begin
+    WorkerUsedCount := FBusiThreadCount * 2;  // 发送器 ×2
+    CSSocketUsedCount := IODataCount - WorkerUsedCount;  // C/S 占用数
     HttpSocketUsedCount := 0;
-
-  if Assigned(FPushManager) then  // 建了 FPushManager
-    PushActiveCount := FPushManager.ActiveCount
-  else
     PushActiveCount := 0;
+  end else
+  begin
+    CSSocketUsedCount := FSocketPool.NodeCount;
+    WorkerUsedCount := FBusiThreadCount;
+
+    if Assigned(FWebSocketPool) then   // 建了 TWebSocket
+      Inc(CSSocketUsedCount, FWebSocketPool.NodeCount);
+
+    if Assigned(FHttpSocketPool) then  // 建了 THttpSocket
+      HttpSocketUsedCount := FHttpSocketPool.NodeCount
+    else
+      HttpSocketUsedCount := 0;
+
+    if Assigned(FPushManager) then  // 建了 FPushManager
+      PushActiveCount := FPushManager.ActiveCount
+    else
+      PushActiveCount := 0;
+  end;
 end;
 
 procedure TInIOCPServer.GetThreadInfo(const ThreadInfo: PWorkThreadSummary;

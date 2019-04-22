@@ -2641,10 +2641,7 @@ begin
   // 如果有多个数据集，第一个为主表
   if (High(AProviders) = High(ATableNames)) then
     for i := 0 to High(ATableNames) do
-    begin
-      AsInt64['Provider_' + IntToStr(i)] := Int64(AProviders[i]);  // 对象
       AsVariant[ATableNames[i]] := AProviders[i].Data;  // 数据
-    end;
 end;
 
 procedure TBaseMessage.NilStreams(CloseAttachment: Boolean);

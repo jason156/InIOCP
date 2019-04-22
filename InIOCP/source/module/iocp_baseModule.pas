@@ -34,7 +34,8 @@ type
   protected
     // 配置数据库连接
     procedure InstallDatabase(const AClassName); virtual;
-    procedure InterApplyUpdates(Params: TReceiveParams; out ErrorCount: Integer);
+    procedure InterApplyUpdates(const DataSetProviders: array of TDataSetProvider;
+                                Params: TReceiveParams; out ErrorCount: Integer);
   public
     { Public declarations }
     procedure ApplyUpdates(AParams: TReceiveParams; AResult: TReturnResult);
@@ -189,24 +190,35 @@ begin
   end; }
 end;
 
-procedure TInIOCPDataModule.InterApplyUpdates(Params: TReceiveParams; out ErrorCount: Integer);
+procedure TInIOCPDataModule.InterApplyUpdates(
+  const DataSetProviders: array of TDataSetProvider;
+  Params: TReceiveParams; out ErrorCount: Integer);
 var
-  i: Integer;
-  oDataSetProvider: TDataSetProvider;
+  i, k: Integer;
   DeltaField: TVarField;
 begin
   // 用 Delta 更新数据表
   // 新版改变：
-  //   第一个字段为用户名称 _UserName，
-  //   以后字段为 Delta 数据和 Int64(DataSetProvider) 值（成对出现），
-  //   Delta 可能有多个，本例子只有一个。
-  // 遍历各 DataSetProvider/Variant 元素（可能为 Null）：
-  for i := 1 to (Params.VarCount - 1) div 2 do  // 第一字段为用户名称 _UserName
-  begin
-    oDataSetProvider := TDataSetProvider(Params.Fields[i * 2 - 1].AsObject); // 1,3,5
-    DeltaField := Params.Fields[i * 2];  // 2,4,6
-    if (DeltaField.IsNull = False) then
-      oDataSetProvider.ApplyUpdates(DeltaField.AsVariant, 0, ErrorCount);
+  //   1. 第一个字段为用户名称 _UserName，
+  //   2. 以后字段为 Delta 数据，可能有多个。
+
+  // 遍历各 Variant 元素（可能为 Null）
+  //   子表可能有外键，先更新子表，最后更新主表
+  try
+    k := 0;
+    for i := Params.VarCount - 1 downto 1 do  // 忽略第一字段：_UserName
+    begin
+      DeltaField := Params.Fields[i];  // 3,2,1
+      if (DeltaField.IsNull = False) then  // 有 Delta 数据
+        try
+          DataSetProviders[i - 1].ApplyUpdates(DeltaField.AsVariant, 0, ErrorCount);
+        finally
+          Inc(k, ErrorCount);
+        end;
+    end;
+    ErrorCount := k;
+  except
+    raise;  // 重新触发异常
   end;
 end;
 

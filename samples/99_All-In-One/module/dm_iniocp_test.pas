@@ -86,21 +86,18 @@ begin
   try
     try
       // 新版改变：
-      //  第一个字段为用户名称 _UserName，
-      //  以后字段为 Delta 数据和 Int64(DataSetProvider) 值（成对出现），
-      //  Delta 可能有多个，本例子只有一个。
+      //   1. 第一个字段为用户名称 _UserName，
+      //   2. 以后字段为 Delta 数据，可能有多个，本例子只有一个。
 
       // 参考：TBaseMessage.LoadFromVariant
       //  Params.Fields[0]：用户名 _UserName
-      //  Params.Fields[1].AsObject：对应 Params.Fields[2] 的 DataSetProvider
-      //  Params.Fields[2].Name：字段名称（表名）
-      //  Params.Fields[2].AsVariant：Delta 数据
-
- {     TDataSetProvider(Params.Fields[1].AsObject).ApplyUpdates(
-                       Params.Fields[2].AsVariant, 0, ErrorCount);    }
+      //  Params.Fields[1].Name：字段名称，对应数据表名称
+      //  Params.Fields[1].AsVariant：Delta 数据
 
       // 执行父类的更新方法
-      InterApplyUpdates(Params, ErrorCount);
+      // 用一组 TDataSetProvider 更新，本例子只有一个
+      InterApplyUpdates([DataSetProvider1], Params, ErrorCount);
+      
     finally
       if ErrorCount = 0 then
       begin
