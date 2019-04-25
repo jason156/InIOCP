@@ -2,24 +2,24 @@ object FormInIOCPWsJSONMsgClient: TFormInIOCPWsJSONMsgClient
   Left = 249
   Top = 433
   Caption = 'InIOCP WebSocket '#26381#21153'-'#28040#24687#25512#36865#23458#25143#31471
-  ClientHeight = 230
-  ClientWidth = 648
+  ClientHeight = 184
+  ClientWidth = 518
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
-  Font.Height = -15
+  Font.Height = -12
   Font.Name = #23435#20307
   Font.Style = []
   OldCreateOrder = False
   Position = poDesktopCenter
   OnCreate = FormCreate
-  PixelsPerInch = 120
-  TextHeight = 15
+  PixelsPerInch = 96
+  TextHeight = 12
   object Memo1: TMemo
     Left = 0
-    Top = 41
-    Width = 648
-    Height = 189
+    Top = 33
+    Width = 518
+    Height = 151
     Align = alClient
     ImeName = #35895#27468#25340#38899#36755#20837#27861' 2'
     Lines.Strings = (
@@ -34,18 +34,28 @@ object FormInIOCPWsJSONMsgClient: TFormInIOCPWsJSONMsgClient
   object Panel1: TPanel
     Left = 0
     Top = 0
-    Width = 648
-    Height = 41
+    Width = 518
+    Height = 33
     Align = alTop
+    Color = clSkyBlue
+    ParentBackground = False
     TabOrder = 1
     object Button1: TButton
-      Left = 26
-      Top = 8
-      Width = 75
-      Height = 28
+      Left = 21
+      Top = 5
+      Width = 60
+      Height = 23
       Caption = #25512#36865
       TabOrder = 0
       OnClick = Button1Click
+    end
+    object chkShowMsgs: TCheckBox
+      Left = 328
+      Top = 10
+      Width = 129
+      Height = 17
+      Caption = #26174#31034#25910#21040#30340#28040#24687
+      TabOrder = 1
     end
   end
   object Timer1: TTimer

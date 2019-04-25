@@ -264,8 +264,7 @@ begin
   inherited Create(False);
   FManager := AManager;
   FSemaphore := FManager.FSemaphore;  // ÒýÓÃ
-  with TInIOCPServer(FManager.FServer) do
-    FSender := TServerTaskSender.Create(IODataPool, Assigned(IOCPBroker));
+  FSender := TServerTaskSender.Create(TInIOCPServer(FManager.FServer).IODataPool);
 end;
 
 procedure TBusiThread.DoMethod;

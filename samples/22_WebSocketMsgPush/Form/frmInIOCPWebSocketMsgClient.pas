@@ -13,6 +13,7 @@ type
     Timer1: TTimer;
     Panel1: TPanel;
     InWSConnection1: TInWSConnection;
+    chkShowMsgs: TCheckBox;
     procedure Button1Click(Sender: TObject);
     procedure InWSConnection1ReceiveData(Sender: TObject; const Msg: string);
     procedure InWSConnection1ReceiveMsg(Sender: TObject; Msg: TJSONResult);
@@ -61,19 +62,21 @@ end;
 
 procedure TFormInIOCPWsJSONMsgClient.InWSConnection1ReceiveData(Sender: TObject; const Msg: string);
 begin
-  // 收到非 InIOCP-JSON 消息（被动接收）
-  Memo1.Lines.Add('收到:' + Msg);
+  // 收到标准 WebSocket 的消息（被动接收，如浏览器的消息）
+  if chkShowMsgs.Checked then
+    Memo1.Lines.Add('收到:' + Msg);
 end;
 
 procedure TFormInIOCPWsJSONMsgClient.InWSConnection1ReceiveMsg(Sender: TObject; Msg: TJSONResult);
 begin
   // 收到 InIOCP-JSON 消息（被动接收）
-  Memo1.Lines.Add('收到:' + Msg.S['msg']);
+  if chkShowMsgs.Checked then
+    Memo1.Lines.Add('收到:' + Msg.S['msg']);
 end;
 
 procedure TFormInIOCPWsJSONMsgClient.InWSConnection1ReturnResult(Sender: TObject; Result: TJSONResult);
 begin
-  // 收到服务端的反馈消息（主动接收）
+  // 发出消息后收到服务端的反馈消息（主动接收）
 end;
 
 procedure TFormInIOCPWsJSONMsgClient.Timer1Timer(Sender: TObject);

@@ -1986,7 +1986,11 @@ begin
 
   try
     if (FMsgType = mtDefault) or FComplete then
+    begin
+      if (FMsgType <> mtDefault) then
+        FResult.Action := FJSON.Action;  // 复制 Action
       FWorker.WSExecute(Self);
+    end;
   finally
     if FComplete then   // 接收完毕
     begin
@@ -2005,7 +2009,6 @@ begin
       // ping 客户端
       InternalPing;  
     end;
-
     // 继续接收
     InternalRecv(FComplete);
   end;
@@ -2175,7 +2178,8 @@ begin
   begin
     FErrorCode := 9;
     InterCloseSocket(Self);
-  end else begin
+  end else
+  begin
     // 清重叠结构
     FillChar(AData^.Overlapped, SizeOf(TOverlapped), 0);
 
@@ -2225,7 +2229,7 @@ begin
     FErrorCode := GetLastError;
     iocp_log.WriteLog('TSocketBroker.CreateBroker:ConnectSocket->' + GetSysErrorMessage(FErrorCode));
     InterCloseSocket(Self);  // 关闭代理
- end else
+  end else
   if TInIOCPServer(FServer).IOCPEngine.BindIoCompletionPort(FDualSocket) then  // 绑定
   begin
     FDualConnected := True;

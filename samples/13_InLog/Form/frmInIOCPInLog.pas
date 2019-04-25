@@ -10,7 +10,11 @@ type
   TFormInIOCPInLog = class(TForm)
     btnTest: TButton;
     Label1: TLabel;
+    Label2: TLabel;
+    btnTest2: TButton;
+    Memo1: TMemo;
     procedure btnTestClick(Sender: TObject);
+    procedure btnTest2Click(Sender: TObject);
   private
     { Private declarations }
   public
@@ -36,7 +40,7 @@ type
   end;
 
 var
-  FActiveCount: Integer = 10;  // 开设线程数
+  FActiveCount: Integer = 0;  // 开设线程数
 
 { TTestThread }
 
@@ -50,12 +54,44 @@ procedure TTestThread.Execute;
 var
   i: Integer;
 begin
-  for i := 1 to 1000000 do   // 写100万次
+  for i := 1 to 100000 do   // 写10万次
     iocp_log.WriteLog(FIndex + '->测试日志线程，测试日志线程.');
   windows.InterlockedDecrement(FActiveCount);
 end;
 
 {$R *.dfm}
+
+procedure TFormInIOCPInLog.btnTest2Click(Sender: TObject);
+var
+  i: Integer;
+  TickCount: Cardinal;
+begin
+  // 开启日志，设置文件路径
+  TLogThread.InitLog('log');
+
+  FActiveCount := 10;
+  TickCount := GetTickCount;
+
+  // 开 10 个线程
+  for i := 1 to FActiveCount do
+    with TTestThread.Create do
+    begin
+      FIndex := IntToStr(i);
+      Resume;
+    end;
+
+  // 等全部线程结束
+  while FActiveCount > 0 do
+    Sleep(10);
+
+  // 完成
+  Memo1.Lines.Add('10个线程写日志百万次...');
+  Memo1.Lines.Add('耗时（毫米）: ' + IntToStr(GetTickCount - TickCount));
+                    
+  // 停止日志
+  TLogThread.StopLog;
+
+end;
 
 procedure TFormInIOCPInLog.btnTestClick(Sender: TObject);
 var
@@ -69,22 +105,11 @@ begin
 
   for i := 1 to 1000000 do
     iocp_log.WriteLog('->测试日志线程，测试日志线程.');
-    
-{  for i := 0 to 9 do
-    with TTestThread.Create do
-    begin
-      FIndex := IntToStr(i);
-      Resume;
-    end;
 
-  // 等全部线程结束
-  while FActiveCount > 0 do
-    Sleep(10);     }
+  // 完成
+  Memo1.Lines.Add('单线程循环写日志百万次...');
+  Memo1.Lines.Add('耗时（毫米）: ' + IntToStr(GetTickCount - TickCount));
 
-  // 用10个线程写日志，每线程写百万次...
-  Label1.Caption := Label1.Caption + #13#10'结束，耗时: ' +
-                    IntToStr(GetTickCount - TickCount);
-                    
   // 停止日志
   TLogThread.StopLog;
 

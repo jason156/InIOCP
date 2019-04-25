@@ -125,16 +125,16 @@ begin
         33:  // 广播
           InWebSocketManager1.Broadcast(Socket);
 
-        11:  begin  // 执行数据库查询
+        11: begin  // 执行数据库查询
           Memo1.Lines.Add('aaa=' + Socket.JSON.S['aaa']);
           // 查询
-          Socket.Result.Action := 11;
+//          Socket.Result.Action := 11;  // 新版自动设置 Action
           TBusiWorker(Sender).DataModule.WebSocketQuery(Socket.JSON, Socket.Result);
           Socket.SendResult;  // 用默认字符集，非 UTF-8
         end;
 
         12: begin // 更新数据表
-          Socket.Result.Action := 12;
+//          Socket.Result.Action := 12;   // 新版自动设置 Action
 
           TBusiWorker(Sender).DataModule.WebSocketUpdates(Socket.JSON, Socket.Result);
 
@@ -142,7 +142,7 @@ begin
         end;
 
         20: begin // 查询文件
-          Socket.Result.Action := 20;
+//          Socket.Result.Action := 20;  // 新版自动设置 Action
 
           // 查询路径：gAppPath + 'form\'
           InFileManager1.ListFiles(Socket, gAppPath + Socket.JSON.S['path']);

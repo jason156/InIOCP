@@ -52,7 +52,7 @@ type
   end;
 
   // ================= 套接字对象数据发送器 类 =================
-  // 服务端用 TransmitFile 模式发送的数据描述
+  // 服务端用 TransmitFile() 模式发送的数据描述
   // 此类对象附属于 TBaseSocket，开启编译项 TRANSMIT_FILE 有效
   
   {$IFDEF TRANSMIT_FILE}
@@ -139,14 +139,11 @@ type
   // 此类对象附属于业务线程 TBusiThread
 
   TServerTaskSender = class(TBaseTaskSender)
-  private
-    FDualBuf: PPerIOData;   // 轮换的内存块
-    FTempBuf: PPerIOData;   // 临时变量
   protected
     procedure DirectSend(OutBuf: PAnsiChar; OutSize, FrameSize: Integer); override;
     procedure ReadSendBuffers(InBuf: PAnsiChar; ReadCount, FrameSize: Integer); override;
   public
-    constructor Create(BufferPool: TIODataPool; DoubleBuf: Boolean);
+    constructor Create(BufferPool: TIODataPool);
     procedure CopySend(ARecvBuf: PPerIOData);
     procedure FreeBuffers(BufferPool: TIODataPool);
   public
@@ -458,7 +455,7 @@ procedure TTransmitObject.TransmitFile;
 var
   XOffset: LARGE_INTEGER;
 begin
-  // 用 TransmitFile 发送 Task 的内容
+  // 用 TransmitFile() 发送 Task 的内容
   // 提交后有三种结果：
   // 1. 失败，在当前线程处理
   // 2. 提交成功，有两种情况：
@@ -859,12 +856,14 @@ end;
 
 procedure TBaseTaskSender.SendVar(const Data: Variant);
 begin
+  // 发送可变类型数据
   InterSetTaskVar(Data);
   InternalSend;
 end;
 
 procedure TBaseTaskSender.SetChunked(const Value: Boolean);
 begin
+  // 设置 HTTP 分块模式
   FChunked := Value;
   FOpCode := ocContinuation;
   FWebSocket := False;  // 不是 WebSocket 发送
@@ -872,6 +871,7 @@ end;
 
 procedure TBaseTaskSender.SetOpCode(Value: TWSOpCode);
 begin
+  // 设置 WebSocket 协议的操作
   FOpCode := Value;
   FWebSocket := True;
   FChunked := False;  // 不是分块发送了
@@ -881,28 +881,17 @@ end;
 
 procedure TServerTaskSender.CopySend(ARecvBuf: PPerIOData);
 begin
-  // 复制发送 TPerIOData（轮流使用发送内存块，以防产生占用冲突）
-  try
-    FTempBuf := FDualBuf;
-    FSendBuf^.Data.len := ARecvBuf^.Overlapped.InternalHigh;
-    System.Move(ARecvBuf^.Data.buf^, FSendBuf^.Data.buf^, FSendBuf^.Data.len);
-    DirectSend(nil, FSendBuf^.Data.len, 0);  // 直接发送
-  finally
-    FDualBuf := FSendBuf;  // 交换变量
-    FSendBuf := FTempBuf;
-  end;
+  // 复制 ARecvBuf 发送
+  FSendBuf^.Data.len := ARecvBuf^.Overlapped.InternalHigh;
+  System.Move(ARecvBuf^.Data.buf^, FSendBuf^.Data.buf^, FSendBuf^.Data.len);
+  DirectSend(nil, FSendBuf^.Data.len, 0);  // 直接发送
 end;
 
-constructor TServerTaskSender.Create(BufferPool: TIODataPool; DoubleBuf: Boolean);
+constructor TServerTaskSender.Create(BufferPool: TIODataPool);
 begin
   inherited Create;
   FSendBuf := BufferPool.Pop^.Data;
   FSendBuf^.Data.len := IO_BUFFER_SIZE;
-  if DoubleBuf then  // 代理模式，双发送内存块
-  begin
-    FDualBuf := BufferPool.Pop^.Data;
-    FDualBuf^.Data.len := IO_BUFFER_SIZE;
-  end;
   FBufferSize := IO_BUFFER_SIZE;
   FWebSocket := False;
 end;
@@ -945,17 +934,12 @@ procedure TServerTaskSender.FreeBuffers(BufferPool: TIODataPool);
 begin
   BufferPool.Push(FSendBuf^.Node);
   FSendBuf := nil;
-  if Assigned(FDualBuf) then
-  begin
-    BufferPool.Push(FDualBuf^.Node);
-    FDualBuf := nil;
-  end;
 end;
 
 procedure TServerTaskSender.ReadSendBuffers(InBuf: PAnsiChar; ReadCount, FrameSize: Integer);
 begin
   // 读数据到发送缓存，发送
-  if FChunked or (FrameSize > 0) then
+  if FChunked or (FrameSize > 0) then  // 要分块发送
   begin
     // 1. 发送 Chunk, WebSocket 首次数据
     System.Move(InBuf^, (FSendBuf^.Data.buf + FrameSize)^, ReadCount);  // 内容
@@ -965,7 +949,7 @@ begin
       DirectSend(nil, ReadCount + FrameSize, FrameSize);
   end else
   begin
-    // 2. 无描述的数据，直接读入
+    // 2. 无分块描述的数据，直接读入
     System.Move(InBuf^, FSendBuf^.Data.buf^, ReadCount);
     DirectSend(nil, ReadCount, 0);
   end;

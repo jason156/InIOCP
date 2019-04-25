@@ -197,6 +197,7 @@ type
     procedure AcceptExClient(IOData: PPerIOData; ErrorCode: Integer);
 
     procedure ClearIPList;               // 清除 IP 表
+    procedure ClosePoolSockets;          // 关闭池内套接字    
     procedure Prepare;                   // 准备监听 Socket
     procedure OpenDetails;               // 启动细节
 
@@ -223,7 +224,7 @@ type
                             HttpSocketCount, HttpSocketUsedCount,
                             ActiveCount: Integer; var WorkTotalCount: IOCP_LARGE_INTEGER);
     procedure GetIODataInfo(var IODataCount, CSSocketUsedCount,
-                            HttpSocketUsedCount, PushActiveCount,
+                            HttpSocketUsedCount, PushQueueCount,
                             WorkerUsedCount: Integer);
     procedure GetThreadInfo(const ThreadInfo: PWorkThreadSummary;
                             var BusiThreadCount, BusiActiveCount,
@@ -784,6 +785,34 @@ begin
   end;
 end;
 
+procedure TInIOCPServer.ClosePoolSockets;
+var
+  i: Integer;
+  Sockets: TInList;
+begin
+  Sockets := TInList.Create;
+  try
+    if Assigned(FSocketPool) then
+      FSocketPool.GetSockets(Sockets);
+
+    if Assigned(FHttpSocketPool) then
+      FHttpSocketPool.GetSockets(Sockets);
+
+    if Assigned(FWebSocketPool) then
+      FWebSocketPool.GetSockets(Sockets);
+
+    // 关闭
+    for i := 0 to Sockets.Count - 1 do
+      CloseSocket(Sockets.PopFirst);
+
+    {$IFDEF DEBUG_MODE}
+    iocp_log.WriteLog('TInIOCPServer.ClosePoolSockets->关闭客户池套接字成功。');
+    {$ENDIF}         
+  finally
+    Sockets.Free;
+  end;
+end;
+
 procedure TInIOCPServer.CloseSocket(ASocket: TBaseSocket);
 begin
   // 减少 IP/Session 引用，关闭 Socket
@@ -895,35 +924,34 @@ begin
 end;
 
 procedure TInIOCPServer.GetIODataInfo(var IODataCount,
-  CSSocketUsedCount, HttpSocketUsedCount, PushActiveCount,
+  CSSocketUsedCount, HttpSocketUsedCount, PushQueueCount,
   WorkerUsedCount: Integer);
 begin
   // 统计内存块的使用
-  IODataCount := FIODataPool.NodeCount;  // 总数
 
-  if Assigned(FIOCPBroker) then
+  IODataCount := FIODataPool.NodeCount; // 总占用数  
+  CSSocketUsedCount := IODataCount - FBusiThreadCount;  // C/S 占用数
+  WorkerUsedCount := FBusiThreadCount;  // 发送器/工作线程占用
+  
+  if FStreamMode then // 流模式、代理模式
   begin
-    WorkerUsedCount := FBusiThreadCount * 2;  // 发送器 ×2
-    CSSocketUsedCount := IODataCount - WorkerUsedCount;  // C/S 占用数
     HttpSocketUsedCount := 0;
-    PushActiveCount := 0;
+    PushQueueCount := 0;
   end else
   begin
-    CSSocketUsedCount := FSocketPool.NodeCount;
-    WorkerUsedCount := FBusiThreadCount;
-
-    if Assigned(FWebSocketPool) then   // 建了 TWebSocket
-      Inc(CSSocketUsedCount, FWebSocketPool.NodeCount);
-
     if Assigned(FHttpSocketPool) then  // 建了 THttpSocket
-      HttpSocketUsedCount := FHttpSocketPool.NodeCount
-    else
+    begin
+      HttpSocketUsedCount := FHttpSocketPool.NodeCount;
+      Dec(CSSocketUsedCount, HttpSocketUsedCount);  // 总数减少
+    end else
       HttpSocketUsedCount := 0;
 
     if Assigned(FPushManager) then  // 建了 FPushManager
-      PushActiveCount := FPushManager.ActiveCount
-    else
-      PushActiveCount := 0;
+    begin
+      PushQueueCount := FPushManager.ActiveCount;
+      Dec(CSSocketUsedCount, PushQueueCount);  // 总数减少
+    end else
+      PushQueueCount := 0;
   end;
 end;
 
@@ -992,6 +1020,9 @@ begin
     {$ENDIF}
   end;
 
+  // 关闭池内套接字
+  ClosePoolSockets;
+    
   if Assigned(FPushManager) then  // 等待推送线程执行完毕
     FPushManager.WaitFor;
 
@@ -1001,7 +1032,8 @@ begin
   if Assigned(FCloseThread) then  // 等待 Socket 关闭完毕
     FCloseThread.WaitFor;
 
-  FState := SERVER_STOPED;        // 正式停止，工作线程将结束
+  // 正式停止，工作线程将结束
+  FState := SERVER_STOPED;        
 
   // 释放额外资源
   FreeExtraResources;

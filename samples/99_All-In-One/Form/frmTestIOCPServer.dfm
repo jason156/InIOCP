@@ -16,7 +16,7 @@ object FormTestIOCPServer: TFormTestIOCPServer
   OnClose = FormClose
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  PixelsPerInch = 96
+  PixelsPerInch = 120
   TextHeight = 12
   object bvl2: TBevel
     Left = 719
@@ -363,7 +363,7 @@ object FormTestIOCPServer: TFormTestIOCPServer
         Left = 0
         Top = 0
         Width = 574
-        Height = 192
+        Height = 191
         Align = alClient
         ImeName = #35895#27468#25340#38899#36755#20837#27861' 2'
         Lines.Strings = (
@@ -383,7 +383,7 @@ object FormTestIOCPServer: TFormTestIOCPServer
         Left = 0
         Top = 0
         Width = 574
-        Height = 192
+        Height = 191
         Align = alClient
         DataSource = DataSource1
         ImeName = #35895#27468#25340#38899#36755#20837#27861' 2'
